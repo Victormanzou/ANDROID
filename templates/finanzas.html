@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold">💰 Gestión Financiera</h2>
+        <p class="text-muted">Control de ingresos, egresos y facturas de proveedores.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalGasto">
+            <i class="bi bi-plus-circle me-2"></i>Registrar Gasto
+        </button>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 bg-primary text-white">
+            <h6 class="text-white-50 small uppercase fw-bold">Ingresos Totales (Mes)</h6>
+            <h2 class="fw-bold mb-0">${{ "{:,.2f}".format(resumen.ingresos_mes) }}</h2>
+            <i class="bi bi-graph-up-arrow position-absolute end-0 bottom-0 m-3 opacity-25 fs-1"></i>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 bg-white">
+            <h6 class="text-muted small uppercase fw-bold">Egresos / Gastos</h6>
+            <h2 class="fw-bold mb-0 text-danger">${{ "{:,.2f}".format(resumen.egresos_mes) }}</h2>
+            <i class="bi bi-cart-dash position-absolute end-0 bottom-0 m-3 text-danger opacity-25 fs-1"></i>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 bg-white border-start border-success border-4">
+            <h6 class="text-muted small uppercase fw-bold">Balance Neto</h6>
+            <h2 class="fw-bold mb-0 text-success">${{ "{:,.2f}".format(resumen.balance) }}</h2>
+            <i class="bi bi-piggy-bank position-absolute end-0 bottom-0 m-3 text-success opacity-25 fs-1"></i>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">📑 Facturas y Cuentas por Pagar</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-center">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>Concepto</th>
+                        <th>Monto</th>
+                        <th>Vencimiento</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cuentas %}
+                    <tr>
+                        <td class="fw-bold">{{ c.proveedor }}</td>
+                        <td>Compra de Mercancía</td>
+                        <td class="text-danger fw-bold">${{ "{:,.2f}".format(c.monto) }}</td>
+                        <td>{{ c.vence }}</td>
+                        <td>
+                            <span class="badge {% if c.estado == 'Urgente' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                {{ c.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-check-lg me-1"></i>Marcar Pagado
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalGasto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Registrar Nuevo Gasto / Pago</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Proveedor o Concepto</label>
+                        <input type="text" class="form-control" placeholder="Ej. Pago de Luz, Bimbo, Renta...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto ($)</label>
+                        <input type="number" class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha Límite de Pago</label>
+                        <input type="date" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Guardar Movimiento</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
