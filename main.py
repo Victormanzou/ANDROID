@@ -20,13 +20,14 @@ def index():
     productos = Producto.obtener_todos()
 
     stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
-    productos_vencidos = [p for p in productos if p['fecha_vencimiento']]
+    productos_vencidos = [p for p in productos if p.get('fecha_vencimiento')]
 
-    resumen_hoy = Venta.obtener_resumen_hoy()
+    # 🔥 FIX CRÍTICO
+    resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
     metricas = {
-        'ventas_hoy': resumen_hoy['total'] or 0.0,
-        'utilidad_hoy': resumen_hoy['utilidad'] or 0.0,
+        'ventas_hoy': resumen_hoy.get('total', 0.0),
+        'utilidad_hoy': resumen_hoy.get('utilidad', 0.0),
         'conteo_stock_bajo': len(stock_bajo),
         'mermas_mes': 50.00
     }
@@ -42,7 +43,11 @@ def index():
         'index.html',
         metricas=metricas,
         alertas=alertas,
-        productos_vencidos=productos_vencidos
+        productos_abc=[],
+        productos_vencidos=productos_vencidos,
+        finanzas={},
+        reporte_diario={},
+        reporte_semanal={}
     )
 
 
@@ -108,7 +113,7 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS (🔥 CORREGIDO)
+# COMPRAS
 # =========================
 @app.route('/compras')
 def compras():
@@ -132,10 +137,7 @@ def agregar_compra():
 
         total = cantidad * costo
 
-        # 🔥 1. registrar compra
         Compra.registrar((id_producto, proveedor, cantidad, costo, total))
-
-        # 🔥 2. actualizar stock
         Producto.aumentar_stock(id_producto, cantidad)
 
         return redirect(url_for('compras'))
