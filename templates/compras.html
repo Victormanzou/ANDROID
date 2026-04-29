@@ -6,40 +6,30 @@
         <h2 class="fw-bold">🚚 Registro de Compras</h2>
         <p class="text-muted">Gestiona la entrada de mercancía y facturas de proveedores.</p>
     </div>
+
     <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaCompra">
         <i class="bi bi-cart-plus"></i> Registrar Surtido
     </button>
 </div>
 
+<!-- RESUMEN -->
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="card border-0 shadow-sm p-3">
-            <div class="d-flex align-items-center">
-                <div class="icon-shape bg-soft-primary text-primary rounded-circle me-3">
-                    <i class="bi bi-truck fs-4"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 text-muted small">Total Compras (Mes)</h6>
-                    <h4 class="fw-bold mb-0">$0.00</h4>
-                </div>
-            </div>
+            <h6 class="text-muted small">Total Compras</h6>
+            <h4 class="fw-bold">${{ total_compras or 0 }}</h4>
         </div>
     </div>
+
     <div class="col-md-6">
         <div class="card border-0 shadow-sm p-3">
-            <div class="d-flex align-items-center">
-                <div class="icon-shape bg-soft-info text-info rounded-circle me-3">
-                    <i class="bi bi-journal-check fs-4"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 text-muted small">Facturas Registradas</h6>
-                    <h4 class="fw-bold mb-0">0</h4>
-                </div>
-            </div>
+            <h6 class="text-muted small">Facturas Registradas</h6>
+            <h4 class="fw-bold">{{ compras|length }}</h4>
         </div>
     </div>
 </div>
 
+<!-- TABLA -->
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -55,55 +45,96 @@
                         <th class="text-center">Estado</th>
                     </tr>
                 </thead>
+
                 <tbody>
+                    {% for c in compras %}
+                    <tr>
+                        <td class="ps-4">{{ c[0] }}</td>
+                        <td>{{ c[1] }}</td>
+                        <td>{{ c[2] }}</td>
+                        <td>{{ c[3] }}</td>
+                        <td>${{ c[4] }}</td>
+                        <td>${{ (c[3] * c[4]) }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-success">Registrado</span>
+                        </td>
+                    </tr>
+                    {% else %}
                     <tr>
                         <td colspan="7" class="text-center py-5 text-muted">
                             <i class="bi bi-inboxes display-4 d-block mb-3"></i>
                             No hay registros de compras recientes.
                         </td>
                     </tr>
+                    {% endfor %}
                 </tbody>
+
             </table>
         </div>
     </div>
 </div>
 
+<!-- MODAL -->
 <div class="modal fade" id="modalNuevaCompra" tabindex="-1">
     <div class="modal-dialog modal-md">
         <div class="modal-content border-0 shadow">
+
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title fw-bold">Registrar Entrada de Mercancía</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form>
+
+            <form action="/compras/agregar" method="POST">
+
                 <div class="modal-body">
+
+                    <!-- PRODUCTO -->
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Producto</label>
                         <select class="form-select" name="id_producto" required>
                             <option value="">Buscar producto...</option>
-                            </select>
+
+                            {% for p in productos %}
+                            <option value="{{ p['codigo_barras'] }}">
+                                {{ p['nombre'] }} (Stock: {{ p['stock'] }})
+                            </option>
+                            {% endfor %}
+
+                        </select>
                     </div>
+
+                    <!-- PROVEEDOR -->
                     <div class="mb-3">
                         <label class="form-label">Proveedor</label>
-                        <input type="text" class="form-control" name="proveedor" placeholder="Ej: Coca-Cola, Sabritas...">
+                        <input type="text" class="form-control" name="proveedor" required>
                     </div>
+
+                    <!-- CANTIDAD / COSTO -->
                     <div class="row">
                         <div class="col-6 mb-3">
-                            <label class="form-label">Cantidad Comprada</label>
+                            <label class="form-label">Cantidad</label>
                             <input type="number" class="form-control" name="cantidad" required>
                         </div>
+
                         <div class="col-6 mb-3">
-                            <label class="form-label">Costo Unitario ($)</label>
+                            <label class="form-label">Costo Unitario</label>
                             <input type="number" step="0.01" class="form-control" name="costo_unitario" required>
                         </div>
                     </div>
+
                 </div>
+
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-success">Actualizar Stock</button>
+                    <button type="submit" class="btn btn-success">
+                        Actualizar Stock
+                    </button>
                 </div>
+
             </form>
+
         </div>
     </div>
 </div>
+
 {% endblock %}
