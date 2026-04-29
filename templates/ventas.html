@@ -36,7 +36,6 @@
                            id="buscadorVentas"
                            class="form-control border-start-0"
                            placeholder="Escanea o busca producto..."
-                           inputmode="text"
                            autocomplete="off"
                            autofocus>
                 </div>
@@ -91,7 +90,8 @@
         </div>
 
         <div class="alert alert-secondary text-center mt-3">
-            Cambio: <h4 id="cambioEntregado">$0.00</h4>
+            Cambio:
+            <h4 id="cambioEntregado">$0.00</h4>
         </div>
 
     </div>
@@ -102,6 +102,7 @@
 <script>
 let carrito = [];
 let html5QrcodeScanner = null;
+let bloqueado = false;
 
 /* =========================
    📷 CÁMARA
@@ -114,8 +115,9 @@ function toggleEscaner() {
         iniciarEscaner();
     } else {
         contenedor.style.display = 'none';
+
         if (html5QrcodeScanner) {
-            html5QrcodeScanner.clear();
+            html5QrcodeScanner.clear().catch(()=>{});
             html5QrcodeScanner = null;
         }
     }
@@ -130,8 +132,17 @@ function iniciarEscaner() {
     }
 
     html5QrcodeScanner.render((text) => {
+
+        if (bloqueado) return;
+        bloqueado = true;
+
         buscarYAgregar(text);
         vibrar();
+
+        setTimeout(() => {
+            bloqueado = false;
+        }, 2000);
+
     });
 }
 
@@ -185,7 +196,13 @@ function actualizarTabla() {
         lista.innerHTML += `
         <tr>
             <td>${p.nombre}</td>
-            <td class="text-center">${p.cantidad}</td>
+            <td class="text-center">
+                <input type="number"
+                    value="${p.cantidad}"
+                    min="1"
+                    onchange="editarCantidad(${i}, this.value)"
+                    style="width:60px;text-align:center;">
+            </td>
             <td>$${p.precio}</td>
             <td>$${sub.toFixed(2)}</td>
             <td><button onclick="eliminar(${i})">X</button></td>
@@ -194,6 +211,21 @@ function actualizarTabla() {
 
     document.getElementById('totalPagar').innerText = `$${total.toFixed(2)}`;
     document.getElementById('conteoArticulos').innerText = items;
+}
+
+/* =========================
+   ✏️ EDITAR CANTIDAD
+========================= */
+function editarCantidad(i, val) {
+    let v = parseInt(val);
+
+    if (isNaN(v) || v <= 0) {
+        carrito.splice(i, 1);
+    } else {
+        carrito[i].cantidad = v;
+    }
+
+    actualizarTabla();
 }
 
 /* =========================
@@ -217,7 +249,9 @@ function finalizarVenta() {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ carrito })
-    }).then(r => r.json()).then(() => {
+    })
+    .then(r => r.json())
+    .then(() => {
         document.getElementById('cambioEntregado').innerText =
             `$${(pago - total).toFixed(2)}`;
 
@@ -236,35 +270,26 @@ function cancelarVenta() {
 }
 
 /* =========================
-   ⌨️ FIX ANDROID TECLADO
+   📱 ENTER ANDROID FIX
 ========================= */
 window.onload = function () {
 
     const input = document.getElementById('buscadorVentas');
 
     function procesar() {
-        const codigo = input.value.trim();
-        if (!codigo) return;
+        const c = input.value.trim();
+        if (!c) return;
 
-        buscarYAgregar(codigo);
+        buscarYAgregar(c);
         input.value = '';
     }
 
-    // ENTER físico
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             procesar();
         }
     });
-
-    // ANDROID "DONE / NEXT"
-    input.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') procesar();
-    });
-
-    // fallback
-    input.addEventListener('change', procesar);
 };
 
 function vibrar() {
