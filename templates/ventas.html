@@ -7,6 +7,7 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
 
+                <!-- HEADER -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0">
                         <i class="bi bi-cart4 text-primary"></i> Punto de Venta
@@ -83,6 +84,33 @@
         </div>
 
     </div>
+</div>
+
+<!-- =========================
+    🧾 OVERLAY TICKET
+========================= -->
+<div id="overlayTicket" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:white;
+    z-index:99999;
+    padding:15px;
+    overflow:auto;
+">
+
+    <div id="contenidoTicket"></div>
+
+    <button class="btn btn-secondary w-100 mt-3" onclick="cerrarTicket()">
+        ← Volver a ventas
+    </button>
+
+    <button class="btn btn-primary w-100 mt-2" onclick="imprimirTicket()">
+        🖨️ Imprimir
+    </button>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -167,8 +195,6 @@ function buscarYAgregar(codigo) {
 ========================= */
 function agregar(p) {
 
-    if (!p || !p.codigo_barras) return;
-
     let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
     if (ex) {
@@ -249,12 +275,7 @@ function finalizarVenta() {
     .then(r => r.json())
     .then(() => {
 
-        let ticket = generarTicket(carrito, pago, total);
-
-        let win = window.open('', '_blank');
-        win.document.write(ticket);
-        win.document.close();
-        win.print();
+        generarTicket(carrito, pago, total);
 
         document.getElementById('cambioEntregado').innerText =
             `$${(pago-total).toFixed(2)}`;
@@ -266,7 +287,7 @@ function finalizarVenta() {
 }
 
 /* =========================
-   🧾 TICKET
+   🧾 TICKET OVERLAY
 ========================= */
 function generarTicket(carrito, pago, total) {
 
@@ -284,54 +305,51 @@ function generarTicket(carrito, pago, total) {
         </tr>`;
     });
 
-    return `
-    <html>
-    <head>
-        <title>Ticket</title>
-        <style>
-            body { font-family: Arial; padding: 10px; }
-            h2 { text-align:center; }
-            table { width:100%; border-collapse: collapse; }
-            td, th { border-bottom:1px solid #ddd; padding:5px; }
-            .total { font-size:18px; font-weight:bold; margin-top:10px; }
-        </style>
-    </head>
-    <body>
+    document.getElementById("contenidoTicket").innerHTML = `
+        <div style="font-family:Arial;">
+            <h2 style="text-align:center;">🧾 ABARROTES PRO</h2>
+            <p>${fecha}</p>
 
-        <h2>🧾 Ticket de Venta</h2>
-        <p>${fecha}</p>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <th>Producto</th>
+                    <th>Cant</th>
+                    <th>P/U</th>
+                    <th>Total</th>
+                </tr>
+                ${items}
+            </table>
 
-        <table>
-            <tr>
-                <th>Producto</th>
-                <th>Cant</th>
-                <th>P/U</th>
-                <th>Total</th>
-            </tr>
-            ${items}
-        </table>
+            <hr>
 
-        <hr>
+            <h3>TOTAL: $${total.toFixed(2)}</h3>
+            <p>PAGO: $${pago.toFixed(2)}</p>
+            <p>CAMBIO: $${(pago-total).toFixed(2)}</p>
 
-        <p class="total">TOTAL: $${total.toFixed(2)}</p>
-        <p>PAGO: $${pago.toFixed(2)}</p>
-        <p>CAMBIO: $${(pago-total).toFixed(2)}</p>
+            <br>
+            <p style="text-align:center;">Gracias por su compra</p>
+        </div>
+    `;
 
-        <br>
-        <p style="text-align:center;">Gracias por su compra</p>
-
-    </body>
-    </html>`;
+    document.getElementById("overlayTicket").style.display = "block";
 }
 
 /* =========================
-   ❌ CANCELAR
+   🔙 CERRAR TICKET
 ========================= */
-function cancelarVenta() {
-    carrito = [];
-    render();
-    document.getElementById('inputPago').value = '';
-    document.getElementById('cambioEntregado').innerText = "$0.00";
+function cerrarTicket() {
+    document.getElementById("overlayTicket").style.display = "none";
+}
+
+/* =========================
+   🖨️ IMPRIMIR
+========================= */
+function imprimirTicket() {
+    let contenido = document.getElementById("contenidoTicket").innerHTML;
+    let w = window.open('', '', 'width=300,height=600');
+    w.document.write(contenido);
+    w.document.close();
+    w.print();
 }
 
 /* =========================
