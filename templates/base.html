@@ -1,51 +1,94 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Abarrotes Pro</title>
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime
+import os
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-</head>
+from models import Producto, Venta
 
-<body>
+app = Flask(__name__)
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
-    <div class="container">
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-        <a class="navbar-brand fw-bold" href="/">
-            <i class="bi bi-shop me-2"></i>Abarrotes Pro
-        </a>
 
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
+# =========================
+# INDEX ESTABLE
+# =========================
+@app.route('/')
+def index():
+    try:
+        resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/">Dashboard</a>
-                </li>
+        ingresos = float(resumen_hoy.get("total") or 0)
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/ventas">Ventas</a>
-                </li>
+        productos = Producto.obtener_todos() or []
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/inventario">Inventario</a>
-                </li>
+        return render_template(
+            "index.html",
+            metricas={
+                "ventas_hoy": ingresos,
+                "utilidad_hoy": ingresos,
+                "conteo_stock_bajo": 0,
+                "mermas_mes": 0
+            },
+            alertas=[],
+            productos_vencidos=[],
+            ventas_recientes=[],
+            ingresos=ingresos,
+            gastos=0,
+            utilidad=ingresos
+        )
 
-                <li class="nav-item">
-                    <a class="nav-link" href="/compras">Compras</a>
-                </li>
+    except Exception as e:
+        return f"ERROR INDEX: {str(e)}"
 
-            </ul>
-        </div>
 
-    </div>
-</nav>
+# =========================
+# INVENTARIO (RESTO ORIGINAL)
+# =========================
+@app.route('/inventario')
+def inventario():
+    try:
+        productos = Producto.obtener_todos() or []
+        return render_template('inventario.html', productos=[dict(p) for p in productos])
+    except:
+        return render_template('inventario.html', productos=[])
 
-<div class="container">
-    {% block content %}{% endblock %}
-</div>
 
-</body>
-</html>
+# =========================
+# VENTAS
+# =========================
+@app.route('/ventas')
+def ventas():
+    return render_template('ventas.html', now=datetime.now())
+
+
+@app.route('/finalizar_venta', methods=['POST'])
+def finalizar_venta():
+    try:
+        data = request.get_json(silent=True) or {}
+        carrito = data.get("carrito", [])
+
+        if not carrito:
+            return jsonify({"success": False})
+
+        total = Venta.registrar_transaccion(carrito)
+
+        return jsonify({"success": True, "total": total})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# =========================
+# COMPRAS (SIN ROMPER LINKS)
+# =========================
+@app.route('/compras')
+def compras():
+    return render_template("compras.html")
+
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
