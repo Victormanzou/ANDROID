@@ -83,7 +83,7 @@
         <div class="col-lg-8">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
-                    Flujo de Ventas por Hora
+                    Flujo de Ventas por Hora (Tiempo Real)
                 </div>
                 <div class="card-body">
                     <canvas id="graficaHoras" height="280"></canvas>
@@ -109,7 +109,7 @@
 
     </div>
 
-    <!-- 🔥 VENTAS RECIENTES (AQUÍ ESTABA LO QUE FALTABA) -->
+    <!-- VENTAS RECIENTES -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-white fw-bold">
             🧾 Ventas Recientes
@@ -184,21 +184,57 @@
 
 <!-- CHARTS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    new Chart(document.getElementById('graficaHoras'), {
-        type: 'bar',
-        data: {
-            labels: ['8 AM','10 AM','12 PM','2 PM','4 PM','6 PM'],
-            datasets: [{
-                label: 'Ventas',
-                data: [300,500,1200,800,1500,2000],
-                backgroundColor: 'rgba(99,102,241,0.7)'
-            }]
-        }
-    });
+    // ===============================
+    // 🔥 GRÁFICA EN TIEMPO REAL
+    // ===============================
+    let chartHoras;
 
+    async function cargarGrafica() {
+
+        const res = await fetch('/api/ventas_por_hora');
+        const data = await res.json();
+
+        const labels = Object.keys(data).map(h => h + ':00');
+        const valores = Object.values(data);
+
+        if (!chartHoras) {
+
+            chartHoras = new Chart(document.getElementById('graficaHoras'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ventas por hora',
+                        data: valores,
+                        backgroundColor: 'rgba(99,102,241,0.7)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+        } else {
+            chartHoras.data.labels = labels;
+            chartHoras.data.datasets[0].data = valores;
+            chartHoras.update();
+        }
+    }
+
+    cargarGrafica();
+
+    setInterval(() => {
+        cargarGrafica();
+    }, 8000); // cada 8 segundos
+
+    // ===============================
+    // GRÁFICA SEMANAL (ESTÁTICA)
+    // ===============================
     new Chart(document.getElementById('graficaVentas'), {
         type: 'line',
         data: {
