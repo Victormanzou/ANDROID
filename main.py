@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
 
-from models import Producto, Venta
+from models import Producto, Venta, Compra
 
 app = Flask(__name__)
 
@@ -68,7 +68,7 @@ def index():
         ]
 
         # =========================
-        # FINANZAS SEGURAS (SIN CRASH)
+        # FINANZAS SEGURAS (INDEX)
         # =========================
         ingresos = metricas["ventas_hoy"]
         gastos = 0
@@ -77,13 +77,10 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            try:
-                gastos = db.execute("""
-                    SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                    FROM compras
-                """).fetchone()[0] or 0
-            except:
-                gastos = 0
+            gastos = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                FROM compras
+            """).fetchone()[0] or 0
 
             db.close()
 
@@ -109,7 +106,7 @@ def index():
 
 
 # =========================
-# VENTAS POR HORA
+# API VENTAS POR HORA
 # =========================
 @app.route('/api/ventas_por_hora')
 def ventas_por_hora():
@@ -171,11 +168,19 @@ def finalizar_venta():
 
 
 # =========================
+# COMPRAS
+# =========================
+@app.route('/compras')
+def compras():
+    productos = Producto.obtener_todos() or []
+    return render_template('compras.html', productos=[dict(p) for p in productos])
+
+
+# =========================
 # FINANZAS
 # =========================
 @app.route('/finanzas')
 def finanzas():
-
     ingresos = 0
     gastos = 0
 
@@ -184,16 +189,14 @@ def finanzas():
         db = obtener_conexion()
 
         ingresos = db.execute("""
-            SELECT COALESCE(SUM(total),0) FROM ventas
+            SELECT COALESCE(SUM(total),0)
+            FROM ventas
         """).fetchone()[0] or 0
 
-        try:
-            gastos = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                FROM compras
-            """).fetchone()[0] or 0
-        except:
-            gastos = 0
+        gastos = db.execute("""
+            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+            FROM compras
+        """).fetchone()[0] or 0
 
         db.close()
 
@@ -224,15 +227,14 @@ def finanzas():
 
 
 # =========================
-# GUARDAR GASTO (FUNCIONAL REAL)
+# GUARDAR GASTO (🔥 NUEVO FUNCIONAL)
 # =========================
 @app.route('/guardar_gasto', methods=['POST'])
 def guardar_gasto():
-
     try:
-        data = request.get_json(force=True)
+        data = request.get_json()
 
-        concepto = data.get("concepto", "Sin concepto")
+        concepto = data.get("concepto")
         monto = float(data.get("monto") or 0)
         fecha = data.get("fecha") or datetime.now().strftime("%Y-%m-%d")
 
