@@ -32,8 +32,7 @@
                        id="buscadorVentas"
                        class="form-control mb-3"
                        placeholder="Escanea o escribe código"
-                       autocomplete="off"
-                       inputmode="text">
+                       autocomplete="off">
 
                 <!-- TABLA -->
                 <table class="table">
@@ -98,6 +97,7 @@ let bloqueado = false;
    📷 CÁMARA
 ========================= */
 function toggleEscaner() {
+
     const c = document.getElementById('contenedor-lector');
 
     if (c.style.display === 'none') {
@@ -204,13 +204,11 @@ function render() {
         lista.innerHTML += `
         <tr>
             <td>${p.nombre}</td>
-
             <td class="text-center">
                 <button onclick="menos(${i})">-</button>
                 ${p.cantidad}
                 <button onclick="mas(${i})">+</button>
             </td>
-
             <td>$${p.precio.toFixed(2)}</td>
             <td>$${sub.toFixed(2)}</td>
             <td><button onclick="del(${i})">X</button></td>
@@ -229,7 +227,7 @@ function menos(i){ carrito[i].cantidad--; if(carrito[i].cantidad<=0) carrito.spl
 function del(i){ carrito.splice(i,1); render(); }
 
 /* =========================
-   💰 COBRAR
+   💰 COBRAR + TICKET FIX
 ========================= */
 function finalizarVenta() {
 
@@ -240,6 +238,9 @@ function finalizarVenta() {
 
     if (isNaN(pago) || pago < total) return;
 
+    // 🔥 CLAVE: copiar antes de limpiar
+    let ventaFinal = JSON.parse(JSON.stringify(carrito));
+
     fetch('/finalizar_venta', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -247,6 +248,8 @@ function finalizarVenta() {
     })
     .then(r => r.json())
     .then(() => {
+
+        generarTicket(ventaFinal, pago, total);
 
         document.getElementById('cambioEntregado').innerText =
             `$${(pago-total).toFixed(2)}`;
@@ -258,7 +261,67 @@ function finalizarVenta() {
 }
 
 /* =========================
-   ❌ CANCELAR (FIX REAL ANDROID)
+   🧾 TICKET
+========================= */
+function generarTicket(carrito, pago, total) {
+
+    let fecha = new Date().toLocaleString();
+    let items = '';
+
+    carrito.forEach(p => {
+        items += `
+        <tr>
+            <td>${p.nombre}</td>
+            <td>${p.cantidad}</td>
+            <td>$${p.precio.toFixed(2)}</td>
+            <td>$${(p.precio * p.cantidad).toFixed(2)}</td>
+        </tr>`;
+    });
+
+    let html = `
+    <html>
+    <head>
+        <title>Ticket</title>
+        <style>
+            body { font-family: Arial; padding:10px; }
+            table { width:100%; border-collapse:collapse; }
+            td, th { border-bottom:1px solid #ddd; padding:5px; }
+            h2 { text-align:center; }
+        </style>
+    </head>
+    <body>
+
+        <h2>🧾 ABARROTES PRO</h2>
+        <p>${fecha}</p>
+
+        <table>
+            <tr>
+                <th>Producto</th>
+                <th>Cant</th>
+                <th>P/U</th>
+                <th>Total</th>
+            </tr>
+            ${items}
+        </table>
+
+        <hr>
+
+        <h3>TOTAL: $${total.toFixed(2)}</h3>
+        <p>PAGO: $${pago.toFixed(2)}</p>
+        <p>CAMBIO: $${(pago-total).toFixed(2)}</p>
+
+    </body>
+    </html>
+    `;
+
+    let win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.print();
+}
+
+/* =========================
+   ❌ CANCELAR FIX FINAL
 ========================= */
 window.cancelarVenta = function () {
 
@@ -274,8 +337,7 @@ window.cancelarVenta = function () {
         scanner = null;
     }
 
-    const cam = document.getElementById('contenedor-lector');
-    if (cam) cam.style.display = 'none';
+    document.getElementById('contenedor-lector').style.display = 'none';
 
     if (navigator.vibrate) navigator.vibrate(120);
 };
