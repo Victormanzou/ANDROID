@@ -16,7 +16,8 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 def index():
     try:
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
-        ingresos = resumen_hoy.get("total", 0)
+
+        ingresos = float(resumen_hoy.get("total") or 0)
 
         return render_template(
             "index.html",
@@ -28,6 +29,18 @@ def index():
 
     except Exception as e:
         return f"ERROR INDEX: {e}"
+
+
+# =========================
+# INVENTARIO
+# =========================
+@app.route('/inventario')
+def inventario():
+    try:
+        productos = Producto.obtener_todos() or []
+        return render_template('inventario.html', productos=[dict(p) for p in productos])
+    except:
+        return render_template('inventario.html', productos=[])
 
 
 # =========================
@@ -48,23 +61,10 @@ def finalizar_venta():
             return jsonify({"success": False})
 
         total = Venta.registrar_transaccion(carrito)
-
         return jsonify({"success": True, "total": total})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-
-
-# =========================
-# INVENTARIO
-# =========================
-@app.route('/inventario')
-def inventario():
-    try:
-        productos = Producto.obtener_todos() or []
-        return render_template('inventario.html', productos=[dict(p) for p in productos])
-    except:
-        return render_template('inventario.html', productos=[])
 
 
 # =========================
@@ -76,67 +76,56 @@ def finanzas():
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        ingresos = db.execute("SELECT COALESCE(SUM(total),0) FROM ventas").fetchone()[0] or 0
+        ingresos = db.execute("""
+            SELECT COALESCE(SUM(total),0)
+            FROM ventas
+        """).fetchone()[0] or 0
 
-        gastos = 0
-        try:
-            gastos = db.execute("SELECT COALESCE(SUM(cantidad * costo_unitario),0) FROM compras").fetchone()[0] or 0
-        except:
-            gastos = 0
+        gastos = db.execute("""
+            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+            FROM compras
+        """).fetchone()[0] or 0
 
         db.close()
 
-        resumen = {
-            "ingresos_mes": ingresos,
-            "egresos_mes": gastos,
-            "balance": ingresos - gastos
-        }
+    except:
+        ingresos = 0
+        gastos = 0
 
-        return render_template("finanzas.html", resumen=resumen, cuentas=[])
+    resumen = {
+        "ingresos_mes": float(ingresos),
+        "egresos_mes": float(gastos),
+        "balance": float(ingresos) - float(gastos)
+    }
 
-    except Exception as e:
-        return f"ERROR FINANZAS: {e}"
+    return render_template("finanzas.html", resumen=resumen, cuentas=[])
 
 
 # =========================
-# GUARDAR GASTO
+# GUARDAR GASTO (ARREGLADO)
 # =========================
-@app.route('/guardar_gasto', methods=['POST'])
-def guardar_gasto():
+@app.route('/agregar_gasto', methods=['POST'])
+def agregar_gasto():
     try:
-        concepto = request.form.get("concepto")
-        monto = request.form.get("monto")
-        fecha = request.form.get("fecha")
+        concepto = request.form.get("concepto", "Gasto")
+        monto = float(request.form.get("monto") or 0)
+        fecha = request.form.get("fecha") or datetime.now().strftime("%Y-%m-%d")
 
-        if not concepto or not monto:
-            return redirect(url_for("finanzas"))
+        from database.conexion import obtener_conexion
+        db = obtener_conexion()
 
-        try:
-            from database.conexion import obtener_conexion
-            db = obtener_conexion()
+        db.execute("""
+            INSERT INTO compras (proveedor, cantidad, costo_unitario, fecha)
+            VALUES (?, 1, ?, ?)
+        """, (concepto, monto, fecha))
 
-            db.execute("""
-                INSERT INTO compras (proveedor, cantidad, costo_unitario, fecha)
-                VALUES (?, 1, ?, ?)
-            """, (concepto, float(monto), fecha))
-
-            db.commit()
-            db.close()
-        except:
-            pass
+        db.commit()
+        db.close()
 
         return redirect(url_for("finanzas"))
 
     except Exception as e:
         return f"ERROR GASTO: {e}"
-
-
-# =========================
-# 🔥 ESTO ES LO QUE TE FALTABA
-# =========================
-@app.route('/compras')
-def compras():
-    return render_template("compras.html")
 
 
 # =========================
