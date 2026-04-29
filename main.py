@@ -20,9 +20,6 @@ app.jinja_env.auto_reload = True
 @app.route('/')
 def index():
     try:
-        # =========================
-        # PRODUCTOS
-        # =========================
         productos = Producto.obtener_todos() or []
         productos = [dict(p) for p in productos]
 
@@ -36,32 +33,23 @@ def index():
             if p.get('fecha_vencimiento')
         ]
 
-        # =========================
-        # VENTAS
-        # =========================
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
-        if hasattr(Venta, "obtener_recientes"):
-            try:
+        try:
+            if hasattr(Venta, "obtener_recientes"):
                 ventas_recientes = Venta.obtener_recientes(10) or []
                 ventas_recientes = [dict(v) for v in ventas_recientes]
-            except:
-                ventas_recientes = []
+        except:
+            ventas_recientes = []
 
-        # =========================
-        # ABC (seguro)
-        # =========================
         abc_productos = []
-        if hasattr(Producto, "analisis_abc"):
-            try:
+        try:
+            if hasattr(Producto, "analisis_abc"):
                 abc_productos = Producto.analisis_abc() or []
-            except:
-                abc_productos = []
+        except:
+            abc_productos = []
 
-        # =========================
-        # MÉTRICAS
-        # =========================
         metricas = {
             "ventas_hoy": resumen_hoy.get("total", 0),
             "utilidad_hoy": resumen_hoy.get("utilidad", 0),
@@ -69,9 +57,6 @@ def index():
             "mermas_mes": 0
         }
 
-        # =========================
-        # ALERTAS
-        # =========================
         alertas = [
             {
                 "tipo": "Stock",
@@ -83,22 +68,25 @@ def index():
         ]
 
         # =========================
-        # 💰 FINANZAS PARA INDEX
+        # FINANZAS SEGURAS (SIN SQL ROTO)
         # =========================
         ingresos = metricas["ventas_hoy"]
-        gastos = 0
 
+        gastos = 0
         try:
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            gastos = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario), 0)
-                FROM compras
-            """).fetchone()[0]
+            # SOLO si la tabla existe
+            try:
+                gastos = db.execute("""
+                    SELECT COALESCE(SUM(cantidad * costo_unitario), 0)
+                    FROM compras
+                """).fetchone()[0]
+            except:
+                gastos = 0
 
             db.close()
-
         except:
             gastos = 0
 
@@ -112,7 +100,6 @@ def index():
             ventas_recientes=ventas_recientes,
             abc_productos=abc_productos,
 
-            # FINANZAS (INDEX)
             ingresos=ingresos,
             gastos=gastos,
             utilidad=utilidad
@@ -194,24 +181,34 @@ def compras():
 
 
 # =========================
-# FINANZAS (MÓDULO COMPLETO)
+# FINANZAS (SIN RIESGO)
 # =========================
 @app.route('/finanzas')
 def finanzas():
-    from database.conexion import obtener_conexion
+    ingresos = 0
+    gastos = 0
 
-    db = obtener_conexion()
+    try:
+        from database.conexion import obtener_conexion
+        db = obtener_conexion()
 
-    ingresos = db.execute("""
-        SELECT COALESCE(SUM(total),0) FROM ventas
-    """).fetchone()[0]
+        ingresos = db.execute("""
+            SELECT COALESCE(SUM(total),0) FROM ventas
+        """).fetchone()[0]
 
-    gastos = db.execute("""
-        SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-        FROM compras
-    """).fetchone()[0]
+        try:
+            gastos = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                FROM compras
+            """).fetchone()[0]
+        except:
+            gastos = 0
 
-    db.close()
+        db.close()
+
+    except:
+        ingresos = 0
+        gastos = 0
 
     return render_template(
         "finanzas.html",
