@@ -32,8 +32,7 @@
                        id="buscadorVentas"
                        class="form-control mb-3"
                        placeholder="Escanea o escribe código"
-                       autocomplete="off"
-                       inputmode="text">
+                       autocomplete="off">
 
                 <!-- TABLA -->
                 <table class="table">
@@ -53,7 +52,6 @@
         </div>
     </div>
 
-    <!-- PANEL DERECHO -->
     <div class="col-md-4">
 
         <div class="card bg-primary text-white text-center p-3 mb-3">
@@ -89,6 +87,7 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
+
 let carrito = [];
 let scanner = null;
 let bloqueado = false;
@@ -124,19 +123,17 @@ function iniciarEscaner() {
 
         scanner.start(
             cameraId,
-            { fps: 12, qrbox: 220 },
+            { fps: 10, qrbox: 220 },
             (text) => {
-
                 if (bloqueado) return;
                 bloqueado = true;
 
                 buscarYAgregar(text);
                 vibrar();
 
-                setTimeout(() => bloqueado = false, 1200);
+                setTimeout(() => bloqueado = false, 1000);
             }
         );
-
     });
 }
 
@@ -149,7 +146,17 @@ function buscarYAgregar(codigo) {
     fetch(`/buscar_producto/${codigo}`)
         .then(r => r.json())
         .then(data => {
-            if (data.success) agregar(data.producto);
+
+            if (!data.success) return;
+
+            // 🔥 FIX CLAVE: normalizar datos
+            let p = data.producto;
+
+            agregar({
+                codigo_barras: p.codigo_barras,
+                nombre: p.nombre,
+                precio: p.precio_venta
+            });
         });
 }
 
@@ -160,13 +167,16 @@ function agregar(p) {
 
     let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
-    if (ex) ex.cantidad++;
-    else carrito.push({
-        codigo_barras: p.codigo_barras,
-        nombre: p.nombre,
-        precio: p.precio_venta,
-        cantidad: 1
-    });
+    if (ex) {
+        ex.cantidad++;
+    } else {
+        carrito.push({
+            codigo_barras: p.codigo_barras,
+            nombre: p.nombre,
+            precio: parseFloat(p.precio),
+            cantidad: 1
+        });
+    }
 
     render();
 }
@@ -209,14 +219,14 @@ function render() {
 }
 
 /* =========================
-   CONTROLES
+   CANTIDADES
 ========================= */
 function mas(i){ carrito[i].cantidad++; render(); }
 function menos(i){ carrito[i].cantidad--; if(carrito[i].cantidad<=0) carrito.splice(i,1); render(); }
 function del(i){ carrito.splice(i,1); render(); }
 
 /* =========================
-   COBRAR
+   💰 COBRAR
 ========================= */
 function finalizarVenta() {
 
@@ -245,35 +255,24 @@ function finalizarVenta() {
 }
 
 /* =========================
-   CANCELAR
+   ENTER ANDROID FIX
 ========================= */
-function cancelarVenta() {
-    carrito = [];
-    render();
-    document.getElementById('inputPago').value = '';
-    document.getElementById('cambioEntregado').innerText = "$0.00";
-}
-
-/* =========================
-   🔥 FIX ANDROID ENTER (IMPORTANTE)
-========================= */
-window.addEventListener('DOMContentLoaded', () => {
+window.onload = function () {
 
     const input = document.getElementById('buscadorVentas');
 
-    input.addEventListener('keydown', function(e) {
-
+    input.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter') {
-            e.preventDefault(); // 🔥 evita comportamiento raro Android
+            e.preventDefault();
 
-            let codigo = this.value.trim();
+            let codigo = input.value.trim();
             if (!codigo) return;
 
             buscarYAgregar(codigo);
-            this.value = '';
+            input.value = '';
         }
     });
-});
+};
 
 /* =========================
    VIBRACIÓN
@@ -281,6 +280,7 @@ window.addEventListener('DOMContentLoaded', () => {
 function vibrar(){
     if (navigator.vibrate) navigator.vibrate(80);
 }
+
 </script>
 
 {% endblock %}
