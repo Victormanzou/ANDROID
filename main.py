@@ -32,18 +32,6 @@ def index():
 
 
 # =========================
-# INVENTARIO
-# =========================
-@app.route('/inventario')
-def inventario():
-    try:
-        productos = Producto.obtener_todos() or []
-        return render_template('inventario.html', productos=[dict(p) for p in productos])
-    except:
-        return render_template('inventario.html', productos=[])
-
-
-# =========================
 # VENTAS
 # =========================
 @app.route('/ventas')
@@ -61,10 +49,23 @@ def finalizar_venta():
             return jsonify({"success": False})
 
         total = Venta.registrar_transaccion(carrito)
+
         return jsonify({"success": True, "total": total})
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+# =========================
+# INVENTARIO
+# =========================
+@app.route('/inventario')
+def inventario():
+    try:
+        productos = Producto.obtener_todos() or []
+        return render_template('inventario.html', productos=[dict(p) for p in productos])
+    except:
+        return render_template('inventario.html', productos=[])
 
 
 # =========================
@@ -102,7 +103,7 @@ def finanzas():
 
 
 # =========================
-# GUARDAR GASTO (ARREGLADO)
+# GUARDAR GASTO
 # =========================
 @app.route('/agregar_gasto', methods=['POST'])
 def agregar_gasto():
@@ -126,6 +127,14 @@ def agregar_gasto():
 
     except Exception as e:
         return f"ERROR GASTO: {e}"
+
+
+# =========================
+# 🔥 IMPORTANTE: ESTO ARREGLA TU ERROR
+# =========================
+@app.route('/compras')
+def compras():
+    return render_template("compras.html")
 
 
 # =========================
