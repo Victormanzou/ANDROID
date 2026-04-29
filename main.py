@@ -2,74 +2,58 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
 
-# IMPORTANTE: Traemos nuestros modelos
 from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
 
-# 🔥 SOLUCIÓN CACHE (AQUÍ ESTÁ LA CLAVE)
+# 🔥 CACHE FIX
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.jinja_env.auto_reload = True
 
-# --- RUTA: DASHBOARD PRINCIPAL ---
+
+# =========================
+# DASHBOARD
+# =========================
 @app.route('/')
 def index():
     productos = Producto.obtener_todos()
-    
+
     stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
-    productos_vencidos = [p for p in productos if p['fecha_vencimiento'] and p['fecha_vencimiento'] != ""]
+    productos_vencidos = [p for p in productos if p['fecha_vencimiento']]
 
     resumen_hoy = Venta.obtener_resumen_hoy()
-    
+
     metricas = {
-        'ventas_hoy': resumen_hoy['total'] if resumen_hoy['total'] else 0.0,
-        'utilidad_hoy': resumen_hoy['utilidad'] if resumen_hoy['utilidad'] else 0.0,
+        'ventas_hoy': resumen_hoy['total'] or 0.0,
+        'utilidad_hoy': resumen_hoy['utilidad'] or 0.0,
         'conteo_stock_bajo': len(stock_bajo),
         'mermas_mes': 50.00
     }
-    
-    alertas = [
-        {
-            'tipo': 'Stock',
-            'mensaje': f"'{p['nombre']}' bajo stock.",
-            'color': 'warning',
-            'fecha': 'Hoy'
-        } for p in stock_bajo
-    ]
-    
-    finanzas = {
-        'ingresos_mes': 15200.00,
-        'egresos_mes': 8400.00,
-        'porcentaje_gastos': 55
-    }
 
-    reporte_diario = {
-        'horas': ['8AM', '12PM', '4PM', '8PM'],
-        'ventas': [200, 800, 450, 950]
-    }
-
-    reporte_semanal = {
-        'dias': ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'],
-        'ventas': [1200, 1900, 1550, 2100, 3400, 4800, 4200]
-    }
+    alertas = [{
+        'tipo': 'Stock',
+        'mensaje': f"{p['nombre']} bajo stock",
+        'color': 'warning',
+        'fecha': 'Hoy'
+    } for p in stock_bajo]
 
     return render_template(
         'index.html',
         metricas=metricas,
         alertas=alertas,
-        productos_abc=[],
-        productos_vencidos=productos_vencidos,
-        finanzas=finanzas,
-        reporte_diario=reporte_diario,
-        reporte_semanal=reporte_semanal
+        productos_vencidos=productos_vencidos
     )
 
-# --- INVENTARIO ---
+
+# =========================
+# INVENTARIO
+# =========================
 @app.route('/inventario')
 def inventario():
     productos = Producto.obtener_todos()
     return render_template('inventario.html', productos=productos)
+
 
 @app.route('/inventario/agregar', methods=['POST'])
 def agregar_producto():
@@ -86,25 +70,27 @@ def agregar_producto():
     Producto.insertar(datos)
     return redirect(url_for('inventario'))
 
-# --- VENTAS ---
+
+# =========================
+# VENTAS
+# =========================
 @app.route('/ventas')
 def ventas():
     return render_template('ventas.html', now=datetime.now())
 
+
 @app.route('/buscar_producto/<codigo>')
 def buscar_producto(codigo):
     producto = Producto.buscar_por_codigo(codigo)
+
     if producto:
         return jsonify({
             'success': True,
-            'producto': {
-                'codigo_barras': producto['codigo_barras'],
-                'nombre': producto['nombre'],
-                'precio_venta': producto['precio_venta'],
-                'stock': producto['stock']
-            }
+            'producto': producto
         })
+
     return jsonify({'success': False})
+
 
 @app.route('/finalizar_venta', methods=['POST'])
 def finalizar_venta():
@@ -112,7 +98,7 @@ def finalizar_venta():
     carrito = data.get('carrito', [])
 
     if not carrito:
-        return jsonify({'success': False, 'message': 'Carrito vacío'})
+        return jsonify({'success': False})
 
     try:
         total = Venta.registrar_transaccion(carrito)
@@ -120,22 +106,55 @@ def finalizar_venta():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
-# --- FINANZAS ---
-@app.route('/finanzas')
-def finanzas():
-    resumen = {
-        'ingresos_mes': 45000.0,
-        'egresos_mes': 32000.0,
-        'balance': 13000.0
-    }
-    return render_template('finanzas.html', resumen=resumen)
 
-# --- COMPRAS ---
+# =========================
+# COMPRAS (🔥 CORREGIDO)
+# =========================
 @app.route('/compras')
 def compras():
-    return render_template('compras.html')
+    productos = Producto.obtener_todos()
+    compras = Compra.obtener_todas() if hasattr(Compra, "obtener_todas") else []
 
-# 🔥 IMPORTANTE PARA RAILWAY Y LOCAL
+    return render_template(
+        'compras.html',
+        productos=productos,
+        compras=compras
+    )
+
+
+@app.route('/compras/agregar', methods=['POST'])
+def agregar_compra():
+    try:
+        id_producto = request.form.get('id_producto')
+        proveedor = request.form.get('proveedor')
+        cantidad = int(request.form.get('cantidad'))
+        costo = float(request.form.get('costo_unitario'))
+
+        total = cantidad * costo
+
+        # 🔥 1. registrar compra
+        Compra.registrar((id_producto, proveedor, cantidad, costo, total))
+
+        # 🔥 2. actualizar stock
+        Producto.aumentar_stock(id_producto, cantidad)
+
+        return redirect(url_for('compras'))
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+# =========================
+# FINANZAS
+# =========================
+@app.route('/finanzas')
+def finanzas():
+    return render_template('finanzas.html')
+
+
+# =========================
+# RUN
+# =========================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
