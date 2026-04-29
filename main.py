@@ -1,13 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
+import sqlite3
 
 from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
 
 # =========================
-# CONFIG (cache fix)
+# CONFIG
 # =========================
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -34,6 +35,9 @@ def index():
 
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
+        # 👇 NUEVO: ventas recientes (para el index)
+        ventas_recientes = Venta.obtener_recientes(10)
+
         metricas = {
             'ventas_hoy': resumen_hoy.get('total', 0),
             'utilidad_hoy': resumen_hoy.get('utilidad', 0),
@@ -56,6 +60,7 @@ def index():
             metricas=metricas,
             alertas=alertas,
             productos_vencidos=productos_vencidos,
+            ventas_recientes=ventas_recientes,   # 👈 IMPORTANTE
             finanzas={},
             reporte_diario={},
             reporte_semanal={}
@@ -132,13 +137,18 @@ def finalizar_venta():
 
     try:
         total = Venta.registrar_transaccion(carrito)
-        return jsonify({'success': True, 'total': total})
+
+        return jsonify({
+            'success': True,
+            'total': total
+        })
+
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
 
 # =========================
-# COMPRAS (SIN TABLA compras)
+# COMPRAS
 # =========================
 @app.route('/compras')
 def compras():
@@ -153,7 +163,6 @@ def agregar_compra():
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        # SOLO actualiza stock (sin tabla compras)
         Compra.registrar_entrada(codigo, cantidad, costo)
 
         return redirect(url_for('compras'))
