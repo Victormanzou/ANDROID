@@ -36,19 +36,19 @@ def index():
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
-        if hasattr(Venta, "obtener_recientes"):
-            try:
+        try:
+            if hasattr(Venta, "obtener_recientes"):
                 ventas_recientes = Venta.obtener_recientes(10) or []
                 ventas_recientes = [dict(v) for v in ventas_recientes]
-            except:
-                ventas_recientes = []
+        except:
+            ventas_recientes = []
 
         abc_productos = []
-        if hasattr(Producto, "analisis_abc"):
-            try:
+        try:
+            if hasattr(Producto, "analisis_abc"):
                 abc_productos = Producto.analisis_abc() or []
-            except:
-                abc_productos = []
+        except:
+            abc_productos = []
 
         metricas = {
             "ventas_hoy": resumen_hoy.get("total", 0),
@@ -77,16 +77,13 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            # ventas → ingresos ya están
-            try:
-                gastos = db.execute("""
-                    SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                    FROM compras
-                """).fetchone()[0] or 0
-            except:
-                gastos = 0
+            gastos = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                FROM compras
+            """).fetchone()[0] or 0
 
             db.close()
+
         except:
             gastos = 0
 
@@ -109,7 +106,7 @@ def index():
 
 
 # =========================
-# VENTAS POR HORA
+# API VENTAS POR HORA
 # =========================
 @app.route('/api/ventas_por_hora')
 def ventas_por_hora():
@@ -180,7 +177,7 @@ def compras():
 
 
 # =========================
-# FINANZAS (ESTABLE + SIN CRASH)
+# FINANZAS
 # =========================
 @app.route('/finanzas')
 def finanzas():
@@ -191,20 +188,15 @@ def finanzas():
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        try:
-            ingresos = db.execute("""
-                SELECT COALESCE(SUM(total),0) FROM ventas
-            """).fetchone()[0] or 0
-        except:
-            ingresos = 0
+        ingresos = db.execute("""
+            SELECT COALESCE(SUM(total),0)
+            FROM ventas
+        """).fetchone()[0] or 0
 
-        try:
-            gastos = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                FROM compras
-            """).fetchone()[0] or 0
-        except:
-            gastos = 0
+        gastos = db.execute("""
+            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+            FROM compras
+        """).fetchone()[0] or 0
 
         db.close()
 
@@ -220,7 +212,7 @@ def finanzas():
 
     cuentas = [
         {
-            "proveedor": "Sistema",
+            "proveedor": "Gasto General",
             "monto": gastos,
             "vence": datetime.now().strftime("%Y-%m-%d"),
             "estado": "Normal"
@@ -232,6 +224,35 @@ def finanzas():
         resumen=resumen,
         cuentas=cuentas
     )
+
+
+# =========================
+# GUARDAR GASTO (🔥 NUEVO FUNCIONAL)
+# =========================
+@app.route('/guardar_gasto', methods=['POST'])
+def guardar_gasto():
+    try:
+        data = request.get_json()
+
+        concepto = data.get("concepto")
+        monto = float(data.get("monto") or 0)
+        fecha = data.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+
+        from database.conexion import obtener_conexion
+        db = obtener_conexion()
+
+        db.execute("""
+            INSERT INTO compras (proveedor, cantidad, costo_unitario, fecha)
+            VALUES (?, ?, ?, ?)
+        """, (concepto, 1, monto, fecha))
+
+        db.commit()
+        db.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 # =========================
