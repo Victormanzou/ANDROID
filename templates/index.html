@@ -155,6 +155,7 @@
             </div>
         </div>
 
+        <!-- 🔥 ABC BIEN PROTEGIDO -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
@@ -163,7 +164,7 @@
 
                 <div class="card-body">
 
-                    {% if abc_productos %}
+                    {% if abc_productos and abc_productos|length > 0 %}
                         {% for p in abc_productos %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span>{{ p.nombre }}</span>
@@ -189,10 +190,31 @@
 
 <!-- ================= FINANZAS ================= -->
 <div class="tab-pane fade" id="finanzas">
+
+    <!-- 🔥 AHORA SÍ CON DATOS REALES -->
     <div class="card p-4">
-        <h5>Flujo de Caja Mensual</h5>
-        <p>Ingresos / Gastos</p>
+
+        <h5>💰 Salud Financiera</h5>
+
+        <div class="d-flex justify-content-between">
+            <span>Ingresos</span>
+            <strong class="text-success">${{ ingresos if ingresos else 0 }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <span>Gastos</span>
+            <strong class="text-danger">${{ gastos if gastos else 0 }}</strong>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between">
+            <span>Utilidad</span>
+            <strong>${{ utilidad if utilidad else 0 }}</strong>
+        </div>
+
     </div>
+
 </div>
 
 </div>
