@@ -16,12 +16,13 @@
                     </button>
                 </div>
 
-                <!-- INPUT -->
+                <!-- INPUT PRODUCTO -->
                 <div class="input-group input-group-lg mb-4">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="bi bi-upc-scan text-muted"></i>
                     </span>
-                    <input type="text" id="buscadorVentas" class="form-control border-start-0" placeholder="Escanea o busca producto..." autofocus>
+                    <input type="text" id="buscadorVentas" class="form-control border-start-0"
+                           placeholder="Escanea o busca producto..." autofocus>
                 </div>
 
                 <!-- TABLA -->
@@ -56,8 +57,9 @@
 
         <div class="card shadow-sm border-0 p-3">
 
-            <!-- INPUT PAGO -->
-            <input type="number" id="inputPago" class="form-control mb-3" placeholder="Pago del cliente">
+            <!-- PAGO -->
+            <input type="number" id="inputPago" class="form-control mb-3"
+                   placeholder="Pago del cliente">
 
             <button class="btn btn-success btn-lg w-100 mb-2 fw-bold" onclick="finalizarVenta()">
                 <i class="bi bi-cash-stack"></i> COBRAR
@@ -85,7 +87,6 @@
             <h4 id="cambioEntregado">$0.00</h4>
         </div>
 
-        <!-- MENSAJES -->
         <div id="mensaje" class="alert mt-3" style="display:none;"></div>
 
     </div>
@@ -94,7 +95,7 @@
 <script>
 let carrito = [];
 
-// 📷 ESCÁNER
+/* 📷 ESCÁNER */
 function abrirEscaner() {
     if (window.Android && Android.iniciarEscaner) {
         Android.iniciarEscaner();
@@ -103,21 +104,23 @@ function abrirEscaner() {
     }
 }
 
-// 🔍 BUSCAR
+/* 🔍 BUSCAR PRODUCTO */
 function buscarYAgregar(codigo) {
+    if (!codigo) return;
+
     fetch(`/buscar_producto/${codigo}`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            agregarAlCarrito(data.producto);
-        } else {
-            mostrarMensaje("Producto no encontrado", "danger");
-        }
-    })
-    .catch(() => mostrarMensaje("Error conexión", "danger"));
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                agregarAlCarrito(data.producto);
+            } else {
+                mostrarMensaje("Producto no encontrado", "danger");
+            }
+        })
+        .catch(() => mostrarMensaje("Error de conexión", "danger"));
 }
 
-// ➕ AGREGAR
+/* ➕ AGREGAR */
 function agregarAlCarrito(producto) {
     const existente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
 
@@ -135,7 +138,7 @@ function agregarAlCarrito(producto) {
     actualizarTabla();
 }
 
-// 🔄 ACTUALIZAR
+/* 🔄 ACTUALIZAR TABLA */
 function actualizarTabla() {
     const lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
@@ -164,13 +167,13 @@ function actualizarTabla() {
     document.getElementById('conteoArticulos').innerText = items;
 }
 
-// ❌ ELIMINAR
+/* ❌ ELIMINAR */
 function eliminarItem(i) {
     carrito.splice(i, 1);
     actualizarTabla();
 }
 
-// 💰 COBRAR
+/* 💰 COBRAR */
 function finalizarVenta() {
     if (carrito.length === 0) {
         mostrarMensaje("Carrito vacío", "warning");
@@ -187,51 +190,67 @@ function finalizarVenta() {
 
     fetch('/finalizar_venta', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ carrito })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+
             let cambio = pago - total;
 
             document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
 
-            mostrarMensaje("✅ Venta realizada", "success");
+            mostrarMensaje("Venta realizada", "success");
 
             carrito = [];
             actualizarTabla();
+
             document.getElementById('inputPago').value = '';
+
+            // 🔥 regresar foco al input principal
+            document.getElementById('buscadorVentas').focus();
         }
     });
 }
 
-// ❌ CANCELAR
+/* ❌ CANCELAR */
 function cancelarVenta() {
     carrito = [];
     actualizarTabla();
+
     document.getElementById('cambioEntregado').innerText = "$0.00";
     document.getElementById('inputPago').value = '';
+
     mostrarMensaje("Venta cancelada", "secondary");
+
+    document.getElementById('buscadorVentas').focus();
 }
 
-// 📢 MENSAJES
+/* 📢 MENSAJES */
 function mostrarMensaje(texto, tipo) {
     const div = document.getElementById('mensaje');
     div.innerHTML = texto;
     div.className = `alert alert-${tipo}`;
     div.style.display = 'block';
 
-    setTimeout(() => div.style.display = 'none', 2500);
+    setTimeout(() => div.style.display = 'none', 2000);
 }
 
-// ⌨️ ENTER
-document.getElementById('buscadorVentas').addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-        buscarYAgregar(e.target.value.trim());
-        e.target.value = '';
-    }
-});
+/* ⌨️ ENTER FIX ANDROID */
+window.onload = function () {
+
+    const input = document.getElementById('buscadorVentas');
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // 🔥 evita salto al input de pago
+            buscarYAgregar(this.value.trim());
+            this.value = '';
+        }
+    });
+
+};
 </script>
 
 {% endblock %}
