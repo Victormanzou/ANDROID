@@ -22,30 +22,37 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm p-4 bg-primary text-white">
             <h6 class="text-white-50">Ingresos</h6>
-            <h3 class="fw-bold">${{ "{:,.2f}".format(resumen.ingresos_mes) }}</h3>
+            <h3 class="fw-bold">
+                ${{ "{:,.2f}".format(resumen.ingresos_mes or 0) }}
+            </h3>
         </div>
     </div>
 
     <div class="col-md-4">
         <div class="card border-0 shadow-sm p-4">
             <h6 class="text-muted">Gastos</h6>
-            <h3 class="text-danger fw-bold">${{ "{:,.2f}".format(resumen.egresos_mes) }}</h3>
+            <h3 class="text-danger fw-bold">
+                ${{ "{:,.2f}".format(resumen.egresos_mes or 0) }}
+            </h3>
         </div>
     </div>
 
     <div class="col-md-4">
         <div class="card border-0 shadow-sm p-4">
             <h6 class="text-muted">Balance</h6>
-            <h3 class="fw-bold text-success">${{ "{:,.2f}".format(resumen.balance) }}</h3>
+            <h3 class="fw-bold text-success">
+                ${{ "{:,.2f}".format(resumen.balance or 0) }}
+            </h3>
         </div>
     </div>
 
 </div>
 
-<!-- MARGEN -->
+<!-- MARGEN (SAFE) -->
 <div class="alert alert-info shadow-sm">
     <strong>💡 Margen:</strong>
-    {{ ((resumen.balance / resumen.ingresos_mes * 100) if resumen.ingresos_mes else 0)|round(2) }}%
+
+    {{ ((resumen.balance or 0) / (resumen.ingresos_mes or 1) * 100) | round(2) }}%
 </div>
 
 <!-- CUENTAS -->
@@ -73,17 +80,21 @@
                 {% for c in cuentas %}
                 <tr>
                     <td class="fw-bold">{{ c.proveedor }}</td>
-                    <td class="text-danger">${{ "{:,.2f}".format(c.monto) }}</td>
-                    <td>{{ c.vence }}</td>
+                    <td class="text-danger">
+                        ${{ "{:,.2f}".format(c.monto or 0) }}
+                    </td>
+                    <td>{{ c.vence or '' }}</td>
                     <td>
                         <span class="badge bg-warning text-dark">
-                            {{ c.estado }}
+                            {{ c.estado or 'Sin estado' }}
                         </span>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="text-muted py-3">Sin cuentas registradas</td>
+                    <td colspan="4" class="text-muted py-3">
+                        Sin cuentas registradas
+                    </td>
                 </tr>
                 {% endfor %}
 
