@@ -15,7 +15,7 @@ app.jinja_env.auto_reload = True
 
 
 # =========================
-# INDEX
+# DASHBOARD
 # =========================
 @app.route('/')
 def index():
@@ -29,10 +29,26 @@ def index():
         ]
 
         productos_vencidos = [
-            p for p in productos if p.get('fecha_vencimiento')
+            p for p in productos
+            if p.get('fecha_vencimiento')
         ]
 
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
+
+        ventas_recientes = []
+        try:
+            if hasattr(Venta, "obtener_recientes"):
+                ventas_recientes = Venta.obtener_recientes(10) or []
+                ventas_recientes = [dict(v) for v in ventas_recientes]
+        except:
+            ventas_recientes = []
+
+        abc_productos = []
+        try:
+            if hasattr(Producto, "analisis_abc"):
+                abc_productos = Producto.analisis_abc() or []
+        except:
+            abc_productos = []
 
         metricas = {
             "ventas_hoy": resumen_hoy.get("total", 0),
@@ -41,6 +57,19 @@ def index():
             "mermas_mes": 0
         }
 
+        alertas = [
+            {
+                "tipo": "Stock",
+                "mensaje": f"{p.get('nombre','Producto')} bajo stock",
+                "color": "warning",
+                "fecha": "Hoy"
+            }
+            for p in stock_bajo
+        ]
+
+        # =========================
+        # FINANZAS SEGURAS (SIN CRASH)
+        # =========================
         ingresos = metricas["ventas_hoy"]
         gastos = 0
 
@@ -48,29 +77,67 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            row = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                FROM compras
-            """).fetchone()
-
-            gastos = row[0] if row else 0
+            try:
+                gastos = db.execute("""
+                    SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                    FROM compras
+                """).fetchone()[0] or 0
+            except:
+                gastos = 0
 
             db.close()
 
         except:
             gastos = 0
 
+        utilidad = ingresos - gastos
+
         return render_template(
             "index.html",
             metricas=metricas,
+            alertas=alertas,
             productos_vencidos=productos_vencidos,
+            ventas_recientes=ventas_recientes,
+            abc_productos=abc_productos,
             ingresos=ingresos,
             gastos=gastos,
-            utilidad=ingresos - gastos
+            utilidad=utilidad
         )
 
     except Exception as e:
         return f"ERROR INDEX: {str(e)}"
+
+
+# =========================
+# VENTAS POR HORA
+# =========================
+@app.route('/api/ventas_por_hora')
+def ventas_por_hora():
+    try:
+        from database.conexion import obtener_conexion
+        conn = obtener_conexion()
+
+        rows = conn.execute("""
+            SELECT 
+                strftime('%H', fecha) as hora,
+                COALESCE(SUM(total),0) as total
+            FROM ventas
+            WHERE DATE(fecha) = DATE('now')
+            GROUP BY hora
+            ORDER BY hora
+        """).fetchall()
+
+        conn.close()
+
+        datos = {f"{i:02d}": 0 for i in range(24)}
+
+        for r in rows:
+            datos[r["hora"]] = r["total"] or 0
+
+        return jsonify(datos)
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 # =========================
@@ -99,16 +166,8 @@ def finalizar_venta():
         return jsonify({"success": False})
 
     total = Venta.registrar_transaccion(carrito)
+
     return jsonify({"success": True, "total": total})
-
-
-# =========================
-# COMPRAS
-# =========================
-@app.route('/compras')
-def compras():
-    productos = Producto.obtener_todos() or []
-    return render_template('compras.html', productos=[dict(p) for p in productos])
 
 
 # =========================
@@ -116,6 +175,7 @@ def compras():
 # =========================
 @app.route('/finanzas')
 def finanzas():
+
     ingresos = 0
     gastos = 0
 
@@ -123,17 +183,15 @@ def finanzas():
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        row1 = db.execute("""
+        ingresos = db.execute("""
             SELECT COALESCE(SUM(total),0) FROM ventas
-        """).fetchone()
-        ingresos = row1[0] if row1 else 0
+        """).fetchone()[0] or 0
 
         try:
-            row2 = db.execute("""
+            gastos = db.execute("""
                 SELECT COALESCE(SUM(cantidad * costo_unitario),0)
                 FROM compras
-            """).fetchone()
-            gastos = row2[0] if row2 else 0
+            """).fetchone()[0] or 0
         except:
             gastos = 0
 
@@ -149,39 +207,50 @@ def finanzas():
         "balance": ingresos - gastos
     }
 
-    return render_template("finanzas.html", resumen=resumen)
+    cuentas = [
+        {
+            "proveedor": "Gasto General",
+            "monto": gastos,
+            "vence": datetime.now().strftime("%Y-%m-%d"),
+            "estado": "Normal"
+        }
+    ] if gastos else []
+
+    return render_template(
+        "finanzas.html",
+        resumen=resumen,
+        cuentas=cuentas
+    )
 
 
 # =========================
-# GUARDAR GASTO (100% FUNCIONAL)
+# GUARDAR GASTO (FUNCIONAL REAL)
 # =========================
 @app.route('/guardar_gasto', methods=['POST'])
 def guardar_gasto():
+
     try:
-        concepto = request.form.get("concepto")
-        monto = request.form.get("monto")
-        fecha = request.form.get("fecha")
+        data = request.get_json(force=True)
 
-        if not concepto or not monto:
-            return redirect(url_for('finanzas'))
-
-        monto = float(monto)
+        concepto = data.get("concepto", "Sin concepto")
+        monto = float(data.get("monto") or 0)
+        fecha = data.get("fecha") or datetime.now().strftime("%Y-%m-%d")
 
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
         db.execute("""
             INSERT INTO compras (proveedor, cantidad, costo_unitario, fecha)
-            VALUES (?, 1, ?, ?)
-        """, (concepto, monto, fecha))
+            VALUES (?, ?, ?, ?)
+        """, (concepto, 1, monto, fecha))
 
         db.commit()
         db.close()
 
-        return redirect(url_for('finanzas'))
+        return jsonify({"success": True})
 
     except Exception as e:
-        return f"ERROR GUARDAR GASTO: {str(e)}"
+        return jsonify({"success": False, "error": str(e)})
 
 
 # =========================
