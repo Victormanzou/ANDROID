@@ -5,11 +5,11 @@
     <h3>Punto de Venta</h3>
 
     <!-- 🔥 BOTÓN CÁMARA -->
-    <button class="btn btn-primary mb-3" onclick="Android.iniciarEscaner()">
-        Escanear producto
+    <button class="btn btn-success mb-3" onclick="abrirEscaner()">
+        📷 Escanear producto
     </button>
 
-    <input type="text" id="buscadorVentas" class="form-control mb-3" placeholder="Código...">
+    <input type="text" id="buscadorVentas" class="form-control mb-3" placeholder="Código..." autofocus>
 
     <table class="table">
         <thead>
@@ -35,8 +35,19 @@
 <script>
 let carrito = [];
 
+// 🔥 ABRIR ESCÁNER (ANDROID)
+function abrirEscaner() {
+    if (window.Android && Android.iniciarEscaner) {
+        Android.iniciarEscaner();
+    } else {
+        alert("⚠️ La cámara solo funciona en la app");
+    }
+}
+
 // 🔥 BUSCAR PRODUCTO
 function buscarYAgregar(codigo) {
+    if (!codigo) return;
+
     fetch(`https://android-production-3e1e.up.railway.app/buscar_producto/${codigo}`)
         .then(res => res.json())
         .then(data => {
@@ -46,10 +57,13 @@ function buscarYAgregar(codigo) {
                 alert("Producto no encontrado");
             }
         })
-        .catch(err => console.error(err));
+        .catch(err => {
+            console.error(err);
+            alert("Error de conexión");
+        });
 }
 
-// 🔥 AGREGAR
+// 🔥 AGREGAR AL CARRITO
 function agregarAlCarrito(producto) {
     const existente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
 
@@ -67,7 +81,7 @@ function agregarAlCarrito(producto) {
     actualizarTabla();
 }
 
-// 🔥 ACTUALIZAR UI
+// 🔥 ACTUALIZAR TABLA
 function actualizarTabla() {
     const lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
@@ -82,16 +96,16 @@ function actualizarTabla() {
         <tr>
             <td>${p.nombre}</td>
             <td>${p.cantidad}</td>
-            <td>${p.precio}</td>
-            <td>${subtotal.toFixed(2)}</td>
-            <td><button onclick="eliminarItem(${i})">X</button></td>
+            <td>$${p.precio}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="eliminarItem(${i})">X</button></td>
         </tr>`;
     });
 
     document.getElementById('totalPagar').innerText = total.toFixed(2);
 }
 
-// 🔥 ELIMINAR
+// 🔥 ELIMINAR ITEM
 function eliminarItem(i) {
     carrito.splice(i, 1);
     actualizarTabla();
@@ -99,15 +113,17 @@ function eliminarItem(i) {
 
 // 🔥 COBRAR
 function finalizarVenta() {
-    if (carrito.length === 0) return alert("Carrito vacío");
+    if (carrito.length === 0) return alert("⚠️ Carrito vacío");
 
-    let pago = prompt("Pago:");
-    if (!pago) return;
+    let pago = prompt("Cantidad con la que paga:");
+    if (pago === null) return;
 
     let total = parseFloat(document.getElementById('totalPagar').innerText);
     let pagoNum = parseFloat(pago);
 
-    if (pagoNum < total) return alert("Pago insuficiente");
+    if (isNaN(pagoNum) || pagoNum < total) {
+        return alert("❌ Pago insuficiente");
+    }
 
     fetch('https://android-production-3e1e.up.railway.app/finalizar_venta', {
         method: 'POST',
@@ -121,20 +137,25 @@ function finalizarVenta() {
 
             document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
 
-            alert("Venta realizada");
+            alert("✅ Venta realizada");
 
             carrito = [];
             actualizarTabla();
 
             setTimeout(() => location.reload(), 1000);
+        } else {
+            alert("❌ Error en la venta");
         }
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+        console.error(err);
+        alert("❌ Error de conexión");
+    });
 }
 
 // 🔥 CANCELAR
 function cancelarVenta() {
-    if (!confirm("Cancelar venta?")) return;
+    if (!confirm("¿Cancelar venta?")) return;
 
     carrito = [];
     actualizarTabla();
@@ -145,7 +166,7 @@ function cancelarVenta() {
 // 🔥 INPUT MANUAL
 document.getElementById('buscadorVentas').addEventListener('keypress', e => {
     if (e.key === 'Enter') {
-        buscarYAgregar(e.target.value);
+        buscarYAgregar(e.target.value.trim());
         e.target.value = '';
     }
 });
