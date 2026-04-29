@@ -17,38 +17,51 @@ app.jinja_env.auto_reload = True
 # =========================
 @app.route('/')
 def index():
-    productos = Producto.obtener_todos()
+    productos = Producto.obtener_todos() or []
 
-    stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
-    productos_vencidos = [p for p in productos if p.get('fecha_vencimiento')]
+    try:
+        stock_bajo = [
+            p for p in productos
+            if p['stock'] <= p['stock_minimo']
+        ]
 
-    # 🔥 FIX CRÍTICO
-    resumen_hoy = Venta.obtener_resumen_hoy() or {}
+        productos_vencidos = [
+            p for p in productos
+            if p['fecha_vencimiento']
+        ]
 
-    metricas = {
-        'ventas_hoy': resumen_hoy.get('total', 0.0),
-        'utilidad_hoy': resumen_hoy.get('utilidad', 0.0),
-        'conteo_stock_bajo': len(stock_bajo),
-        'mermas_mes': 50.00
-    }
+        resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-    alertas = [{
-        'tipo': 'Stock',
-        'mensaje': f"{p['nombre']} bajo stock",
-        'color': 'warning',
-        'fecha': 'Hoy'
-    } for p in stock_bajo]
+        metricas = {
+            'ventas_hoy': resumen_hoy.get('total', 0.0),
+            'utilidad_hoy': resumen_hoy.get('utilidad', 0.0),
+            'conteo_stock_bajo': len(stock_bajo),
+            'mermas_mes': 50.00
+        }
 
-    return render_template(
-        'index.html',
-        metricas=metricas,
-        alertas=alertas,
-        productos_abc=[],
-        productos_vencidos=productos_vencidos,
-        finanzas={},
-        reporte_diario={},
-        reporte_semanal={}
-    )
+        alertas = [
+            {
+                'tipo': 'Stock',
+                'mensaje': f"{p['nombre']} bajo stock",
+                'color': 'warning',
+                'fecha': 'Hoy'
+            }
+            for p in stock_bajo
+        ]
+
+        return render_template(
+            'index.html',
+            metricas=metricas,
+            alertas=alertas,
+            productos_abc=[],
+            productos_vencidos=productos_vencidos,
+            finanzas={},
+            reporte_diario={},
+            reporte_semanal={}
+        )
+
+    except Exception as e:
+        return f"ERROR INDEX: {str(e)}"
 
 
 # =========================
@@ -103,7 +116,7 @@ def finalizar_venta():
     carrito = data.get('carrito', [])
 
     if not carrito:
-        return jsonify({'success': False})
+        return jsonify({'success': False, 'message': 'Carrito vacío'})
 
     try:
         total = Venta.registrar_transaccion(carrito)
