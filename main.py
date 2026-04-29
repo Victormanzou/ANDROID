@@ -20,6 +20,9 @@ app.jinja_env.auto_reload = True
 @app.route('/')
 def index():
     try:
+        # =========================
+        # PRODUCTOS
+        # =========================
         productos = Producto.obtener_todos() or []
         productos = [dict(p) for p in productos]
 
@@ -33,12 +36,26 @@ def index():
             if p.get('fecha_vencimiento')
         ]
 
+        # =========================
+        # VENTAS
+        # =========================
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
         if hasattr(Venta, "obtener_recientes"):
             ventas_recientes = Venta.obtener_recientes(10) or []
+            ventas_recientes = [dict(v) for v in ventas_recientes]
 
+        # =========================
+        # 🔥 ABC PRODUCTOS (FALTANTE REAL)
+        # =========================
+        abc_productos = []
+        if hasattr(Producto, "analisis_abc"):
+            abc_productos = Producto.analisis_abc() or []
+
+        # =========================
+        # MÉTRICAS
+        # =========================
         metricas = {
             'ventas_hoy': resumen_hoy.get('total', 0),
             'utilidad_hoy': resumen_hoy.get('utilidad', 0),
@@ -46,6 +63,9 @@ def index():
             'mermas_mes': 50.00
         }
 
+        # =========================
+        # ALERTAS
+        # =========================
         alertas = [
             {
                 'tipo': 'Stock',
@@ -62,6 +82,7 @@ def index():
             alertas=alertas,
             productos_vencidos=productos_vencidos,
             ventas_recientes=ventas_recientes,
+            abc_productos=abc_productos,   # 🔥 IMPORTANTE
             finanzas={},
             reporte_diario={},
             reporte_semanal={}
@@ -72,13 +93,11 @@ def index():
 
 
 # =========================
-# 📊 NUEVO: VENTAS POR HORA (TIEMPO REAL)
+# 📊 VENTAS POR HORA (TIEMPO REAL)
 # =========================
 @app.route('/api/ventas_por_hora')
 def ventas_por_hora():
     try:
-        db = Venta.obtener_resumen_hoy
-
         from database.conexion import obtener_conexion
         conn = obtener_conexion()
 
