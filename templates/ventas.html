@@ -86,33 +86,6 @@
     </div>
 </div>
 
-<!-- =========================
-    🧾 OVERLAY TICKET
-========================= -->
-<div id="overlayTicket" style="
-    display:none;
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:white;
-    z-index:99999;
-    padding:15px;
-    overflow:auto;
-">
-
-    <div id="contenidoTicket"></div>
-
-    <button class="btn btn-secondary w-100 mt-3" onclick="cerrarTicket()">
-        ← Volver a ventas
-    </button>
-
-    <button class="btn btn-primary w-100 mt-2" onclick="imprimirTicket()">
-        🖨️ Imprimir
-    </button>
-</div>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
@@ -256,7 +229,7 @@ function menos(i){ carrito[i].cantidad--; if(carrito[i].cantidad<=0) carrito.spl
 function del(i){ carrito.splice(i,1); render(); }
 
 /* =========================
-   💰 COBRAR + TICKET
+   💰 COBRAR
 ========================= */
 function finalizarVenta() {
 
@@ -275,8 +248,6 @@ function finalizarVenta() {
     .then(r => r.json())
     .then(() => {
 
-        generarTicket(carrito, pago, total);
-
         document.getElementById('cambioEntregado').innerText =
             `$${(pago-total).toFixed(2)}`;
 
@@ -287,73 +258,30 @@ function finalizarVenta() {
 }
 
 /* =========================
-   🧾 TICKET OVERLAY
+   ❌ CANCELAR (FIX REAL ANDROID)
 ========================= */
-function generarTicket(carrito, pago, total) {
+window.cancelarVenta = function () {
 
-    let fecha = new Date().toLocaleString();
+    carrito = [];
+    render();
 
-    let items = '';
+    document.getElementById('inputPago').value = '';
+    document.getElementById('buscadorVentas').value = '';
+    document.getElementById('cambioEntregado').innerText = "$0.00";
 
-    carrito.forEach(p => {
-        items += `
-        <tr>
-            <td>${p.nombre}</td>
-            <td>${p.cantidad}</td>
-            <td>$${p.precio.toFixed(2)}</td>
-            <td>$${(p.precio * p.cantidad).toFixed(2)}</td>
-        </tr>`;
-    });
+    if (scanner) {
+        try { scanner.clear(); } catch(e) {}
+        scanner = null;
+    }
 
-    document.getElementById("contenidoTicket").innerHTML = `
-        <div style="font-family:Arial;">
-            <h2 style="text-align:center;">🧾 ABARROTES PRO</h2>
-            <p>${fecha}</p>
+    const cam = document.getElementById('contenedor-lector');
+    if (cam) cam.style.display = 'none';
 
-            <table style="width:100%; border-collapse:collapse;">
-                <tr>
-                    <th>Producto</th>
-                    <th>Cant</th>
-                    <th>P/U</th>
-                    <th>Total</th>
-                </tr>
-                ${items}
-            </table>
-
-            <hr>
-
-            <h3>TOTAL: $${total.toFixed(2)}</h3>
-            <p>PAGO: $${pago.toFixed(2)}</p>
-            <p>CAMBIO: $${(pago-total).toFixed(2)}</p>
-
-            <br>
-            <p style="text-align:center;">Gracias por su compra</p>
-        </div>
-    `;
-
-    document.getElementById("overlayTicket").style.display = "block";
-}
+    if (navigator.vibrate) navigator.vibrate(120);
+};
 
 /* =========================
-   🔙 CERRAR TICKET
-========================= */
-function cerrarTicket() {
-    document.getElementById("overlayTicket").style.display = "none";
-}
-
-/* =========================
-   🖨️ IMPRIMIR
-========================= */
-function imprimirTicket() {
-    let contenido = document.getElementById("contenidoTicket").innerHTML;
-    let w = window.open('', '', 'width=300,height=600');
-    w.document.write(contenido);
-    w.document.close();
-    w.print();
-}
-
-/* =========================
-   ENTER ANDROID FIX
+   ENTER FIX
 ========================= */
 window.addEventListener('DOMContentLoaded', function () {
 
