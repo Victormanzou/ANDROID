@@ -176,3 +176,68 @@ tr {
 .container {
     overflow: visible !important;
 }
+/* =========================
+   🌙 FIX MODO OSCURO REAL
+========================= */
+.dark-mode {
+    --bg-gradient: radial-gradient(circle at top right, #0f172a, #1e293b);
+    background: var(--bg-gradient) !important;
+    color: #f1f5f9 !important;
+}
+
+/* textos importantes */
+.dark-mode body,
+.dark-mode p,
+.dark-mode span,
+.dark-mode td,
+.dark-mode th,
+.dark-mode label {
+    color: #f1f5f9 !important;
+}
+
+/* tarjetas */
+.dark-mode .card {
+    background: rgba(30, 41, 59, 0.9) !important;
+    color: #f1f5f9 !important;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* inputs */
+.dark-mode .form-control {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #334155 !important;
+}
+
+.dark-mode .form-control::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* tablas */
+.dark-mode .table {
+    color: #f1f5f9 !important;
+}
+
+.dark-mode .table td,
+.dark-mode .table th {
+    border-color: #334155 !important;
+}
+
+/* bootstrap muted fix */
+.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+/* dropdown */
+.dark-mode .dropdown-menu {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+}
+
+.dark-mode .dropdown-item {
+    color: #f1f5f9 !important;
+}
+
+.dark-mode .dropdown-item:hover {
+    background: #334155 !important;
+}
