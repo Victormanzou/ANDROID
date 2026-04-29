@@ -36,19 +36,19 @@ def index():
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
-        try:
-            if hasattr(Venta, "obtener_recientes"):
+        if hasattr(Venta, "obtener_recientes"):
+            try:
                 ventas_recientes = Venta.obtener_recientes(10) or []
                 ventas_recientes = [dict(v) for v in ventas_recientes]
-        except:
-            ventas_recientes = []
+            except:
+                ventas_recientes = []
 
         abc_productos = []
-        try:
-            if hasattr(Producto, "analisis_abc"):
+        if hasattr(Producto, "analisis_abc"):
+            try:
                 abc_productos = Producto.analisis_abc() or []
-        except:
-            abc_productos = []
+            except:
+                abc_productos = []
 
         metricas = {
             "ventas_hoy": resumen_hoy.get("total", 0),
@@ -68,7 +68,7 @@ def index():
         ]
 
         # =========================
-        # FINANZAS SEGURAS (INDEX MINI)
+        # FINANZAS SEGURAS (INDEX)
         # =========================
         ingresos = metricas["ventas_hoy"]
         gastos = 0
@@ -77,16 +77,16 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
+            # ventas → ingresos ya están
             try:
                 gastos = db.execute("""
-                    SELECT COALESCE(SUM(cantidad * costo_unitario), 0)
+                    SELECT COALESCE(SUM(cantidad * costo_unitario),0)
                     FROM compras
-                """).fetchone()[0]
+                """).fetchone()[0] or 0
             except:
                 gastos = 0
 
             db.close()
-
         except:
             gastos = 0
 
@@ -99,7 +99,6 @@ def index():
             productos_vencidos=productos_vencidos,
             ventas_recientes=ventas_recientes,
             abc_productos=abc_productos,
-
             ingresos=ingresos,
             gastos=gastos,
             utilidad=utilidad
@@ -181,7 +180,7 @@ def compras():
 
 
 # =========================
-# FINANZAS (100% COMPATIBLE CON TU HTML)
+# FINANZAS (ESTABLE + SIN CRASH)
 # =========================
 @app.route('/finanzas')
 def finanzas():
@@ -192,21 +191,18 @@ def finanzas():
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        # INGRESOS
         try:
             ingresos = db.execute("""
-                SELECT COALESCE(SUM(total),0)
-                FROM ventas
-            """).fetchone()[0]
+                SELECT COALESCE(SUM(total),0) FROM ventas
+            """).fetchone()[0] or 0
         except:
             ingresos = 0
 
-        # GASTOS (SAFE)
         try:
             gastos = db.execute("""
                 SELECT COALESCE(SUM(cantidad * costo_unitario),0)
                 FROM compras
-            """).fetchone()[0]
+            """).fetchone()[0] or 0
         except:
             gastos = 0
 
@@ -216,23 +212,20 @@ def finanzas():
         ingresos = 0
         gastos = 0
 
-    # =========================
-    # CUENTAS SIMULADAS (PARA TU TABLA)
-    # =========================
-    cuentas = [
-        {
-            "proveedor": "General",
-            "monto": gastos,
-            "vence": datetime.now().strftime("%Y-%m-%d"),
-            "estado": "Normal"
-        }
-    ] if gastos else []
-
     resumen = {
         "ingresos_mes": ingresos,
         "egresos_mes": gastos,
         "balance": ingresos - gastos
     }
+
+    cuentas = [
+        {
+            "proveedor": "Sistema",
+            "monto": gastos,
+            "vence": datetime.now().strftime("%Y-%m-%d"),
+            "estado": "Normal"
+        }
+    ] if gastos else []
 
     return render_template(
         "finanzas.html",
