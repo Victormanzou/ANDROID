@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
 
@@ -67,74 +67,8 @@ def inventario():
             'inventario.html',
             productos=[dict(p) for p in productos]
         )
-    except Exception as e:
+    except:
         return render_template('inventario.html', productos=[])
-
-
-# =========================
-# FINANZAS (ESTABLE)
-# =========================
-@app.route('/finanzas')
-def finanzas():
-    ingresos = 0
-    gastos = 0
-
-    try:
-        from database.conexion import obtener_conexion
-        db = obtener_conexion()
-
-        row_ingresos = db.execute("""
-            SELECT COALESCE(SUM(total),0) FROM ventas
-        """).fetchone()
-
-        row_gastos = db.execute("""
-            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-            FROM compras
-        """).fetchone()
-
-        ingresos = float(row_ingresos[0] or 0)
-        gastos = float(row_gastos[0] or 0)
-
-        db.close()
-
-    except Exception:
-        ingresos = 0
-        gastos = 0
-
-    resumen = {
-        "ingresos_mes": ingresos,
-        "egresos_mes": gastos,
-        "balance": ingresos - gastos
-    }
-
-    return render_template("finanzas.html", resumen=resumen, cuentas=[])
-
-
-# =========================
-# GUARDAR GASTO
-# =========================
-@app.route('/agregar_gasto', methods=['POST'])
-def agregar_gasto():
-    try:
-        concepto = request.form.get("concepto", "Gasto")
-        monto = float(request.form.get("monto") or 0)
-        fecha = request.form.get("fecha") or datetime.now().strftime("%Y-%m-%d")
-
-        from database.conexion import obtener_conexion
-        db = obtener_conexion()
-
-        db.execute("""
-            INSERT INTO compras (proveedor, cantidad, costo_unitario, fecha)
-            VALUES (?, 1, ?, ?)
-        """, (concepto, monto, fecha))
-
-        db.commit()
-        db.close()
-
-        return redirect(url_for("finanzas"))
-
-    except Exception as e:
-        return f"ERROR GASTO: {str(e)}"
 
 
 # =========================
