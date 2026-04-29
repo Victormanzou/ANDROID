@@ -1,163 +1,60 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold mb-0"><i class="bi bi-cart4 text-primary"></i> Punto de Venta</h4>
-                    <button class="btn btn-primary" onclick="toggleEscaner()">
-                        <i class="bi bi-camera"></i> Activar Escáner
-                    </button>
-                </div>
-                
-                <div id="contenedor-lector" class="mb-3" style="display: none; border: 2px solid #0d6efd; border-radius: 10px; padding: 10px;">
-                    <div id="reader" style="width: 100%;"></div>
-                    <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">Detener Cámara</button>
-                </div>
+<div class="container">
+    <h3>Punto de Venta</h3>
 
-                <div class="input-group input-group-lg mb-4">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-upc-scan text-muted"></i></span>
-                    <input type="text" id="buscadorVentas" class="form-control border-start-0" placeholder="Escanea o busca producto..." autofocus>
-                </div>
+    <!-- 🔥 BOTÓN CÁMARA -->
+    <button class="btn btn-primary mb-3" onclick="Android.iniciarEscaner()">
+        Escanear producto
+    </button>
 
-                <div class="table-responsive" style="min-height: 400px;">
-                    <table class="table align-middle" id="tablaVentas">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th class="text-center">Cant.</th>
-                                <th>Precio</th>
-                                <th>Subtotal</th>
-                                <th class="text-end"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="listaVenta">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+    <input type="text" id="buscadorVentas" class="form-control mb-3" placeholder="Código...">
 
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-primary text-white mb-3">
-            <div class="card-body text-center py-4">
-                <h6 class="text-uppercase opacity-75">Total a Pagar</h6>
-                <h1 class="display-4 fw-bold mb-0" id="totalPagar">$0.00</h1>
-            </div>
-        </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cant</th>
+                <th>Precio</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="listaVenta"></tbody>
+    </table>
 
-        <div class="card shadow-sm border-0 p-3">
-            <button class="btn btn-success btn-lg w-100 py-3 mb-2 fw-bold shadow-sm" onclick="finalizarVenta()">
-                <i class="bi bi-cash-stack"></i> COBRAR
-            </button>
-            
-            <div class="row g-2">
-                <div class="col-6">
-                    <button class="btn btn-outline-dark w-100 py-2" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Ticket
-                    </button>
-                </div>
-                <div class="col-6">
-                    <button class="btn btn-outline-danger w-100 py-2" onclick="cancelarVenta()">
-                        <i class="bi bi-x-circle"></i> Cancelar
-                    </button>
-                </div>
-            </div>
-            
-            <hr class="my-4">
-            
-            <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Artículos:</span>
-                <span class="fw-bold" id="conteoArticulos">0</span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span class="text-muted">Fecha:</span>
-                <span class="small">{{ now.strftime('%d/%m/%Y') if now else "13/04/2026" }}</span>
-            </div>
-        </div>
+    <h3>Total: $<span id="totalPagar">0.00</span></h3>
 
-        <div class="alert alert-secondary border-0 mt-3 text-center">
-            <small class="d-block text-muted">Cambio entregado:</small>
-            <h4 class="mb-0 fw-bold" id="cambioEntregado">$0.00</h4>
-        </div>
-    </div>
+    <button class="btn btn-success" onclick="finalizarVenta()">COBRAR</button>
+    <button class="btn btn-danger" onclick="cancelarVenta()">CANCELAR</button>
+
+    <h4>Cambio: <span id="cambioEntregado">$0.00</span></h4>
 </div>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
 let carrito = [];
-let html5QrcodeScanner = null;
 
-function toggleEscaner() {
-    const contenedor = document.getElementById('contenedor-lector');
-    if (contenedor.style.display === 'none') {
-        contenedor.style.display = 'block';
-        iniciarEscaner();
-    } else {
-        contenedor.style.display = 'none';
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.clear().catch(error => console.error("Error al limpiar:", error));
-            html5QrcodeScanner = null;
-        }
-    }
-}
-
-function iniciarEscaner() {
-    if (!html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 10, 
-            qrbox: {width: 250, height: 150},
-            aspectRatio: 1.0
-        });
-    }
-    
-    html5QrcodeScanner.render((decodedText) => {
-        console.log("Escaneado con éxito:", decodedText);
-        buscarYAgregar(decodedText);
-        
-        // Efecto visual de éxito
-        const readerDiv = document.getElementById('reader');
-        readerDiv.style.border = "5px solid green";
-        setTimeout(() => readerDiv.style.border = "none", 500);
-    }, (error) => {
-        // Errores de escaneo ignorados (buscando...)
-    });
-}
-
+// 🔥 BUSCAR PRODUCTO
 function buscarYAgregar(codigo) {
-    if (!codigo) return;
-    fetch(`/buscar_producto/${codigo}`)
-        .then(response => response.json())
+    fetch(`https://android-production-3e1e.up.railway.app/buscar_producto/${codigo}`)
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
                 agregarAlCarrito(data.producto);
-                if (navigator.vibrate) navigator.vibrate(100);
             } else {
-                console.warn("Producto no registrado.");
+                alert("Producto no encontrado");
             }
         })
-        .catch(err => console.error('Error de red:', err));
+        .catch(err => console.error(err));
 }
 
-// El resto de tus funciones (agregarAlCarrito, actualizarTabla, etc.) se mantienen igual
-// ... [Mantenemos el resto de tu lógica original de carrito y pagos] ...
-
-document.getElementById('buscadorVentas').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        const codigo = this.value.trim();
-        buscarYAgregar(codigo);
-        this.value = '';
-    }
-});
-
+// 🔥 AGREGAR
 function agregarAlCarrito(producto) {
-    const itemExistente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
-    if (itemExistente) {
-        itemExistente.cantidad++;
+    const existente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
+
+    if (existente) {
+        existente.cantidad++;
     } else {
         carrito.push({
             codigo_barras: producto.codigo_barras,
@@ -166,86 +63,92 @@ function agregarAlCarrito(producto) {
             cantidad: 1
         });
     }
+
     actualizarTabla();
 }
 
+// 🔥 ACTUALIZAR UI
 function actualizarTabla() {
-    const listaVenta = document.getElementById('listaVenta');
-    listaVenta.innerHTML = '';
-    let total = 0;
-    let items = 0;
+    const lista = document.getElementById('listaVenta');
+    lista.innerHTML = '';
 
-    carrito.forEach((p, index) => {
-        const subtotal = p.precio * p.cantidad;
+    let total = 0;
+
+    carrito.forEach((p, i) => {
+        let subtotal = p.precio * p.cantidad;
         total += subtotal;
-        items += p.cantidad;
-        listaVenta.innerHTML += `
-            <tr>
-                <td>
-                    <span class="fw-bold d-block">${p.nombre}</span>
-                    <small class="text-muted">${p.codigo_barras}</small>
-                </td>
-                <td class="text-center" style="width: 120px;">
-                    <div class="input-group input-group-sm">
-                        <button class="btn btn-outline-secondary" onclick="cambiarCant(${index}, -1)">-</button>
-                        <input type="text" class="form-control text-center" value="${p.cantidad}" readonly>
-                        <button class="btn btn-outline-secondary" onclick="cambiarCant(${index}, 1)">+</button>
-                    </div>
-                </td>
-                <td>$${p.precio.toFixed(2)}</td>
-                <td class="fw-bold">$${subtotal.toFixed(2)}</td>
-                <td class="text-end">
-                    <button class="btn btn-link text-danger px-0" onclick="eliminarItem(${index})"><i class="bi bi-trash"></i></button>
-                </td>
-            </tr>`;
+
+        lista.innerHTML += `
+        <tr>
+            <td>${p.nombre}</td>
+            <td>${p.cantidad}</td>
+            <td>${p.precio}</td>
+            <td>${subtotal.toFixed(2)}</td>
+            <td><button onclick="eliminarItem(${i})">X</button></td>
+        </tr>`;
     });
 
-    document.getElementById('totalPagar').innerText = `$${total.toFixed(2)}`;
-    document.getElementById('conteoArticulos').innerText = items;
+    document.getElementById('totalPagar').innerText = total.toFixed(2);
 }
 
-function cambiarCant(index, valor) {
-    carrito[index].cantidad += valor;
-    if (carrito[index].cantidad <= 0) eliminarItem(index);
+// 🔥 ELIMINAR
+function eliminarItem(i) {
+    carrito.splice(i, 1);
     actualizarTabla();
 }
 
-function eliminarItem(index) {
-    carrito.splice(index, 1);
-    actualizarTabla();
-}
-
+// 🔥 COBRAR
 function finalizarVenta() {
-    if (carrito.length === 0) return alert("⚠️ El carrito está vacío");
-    const pago = prompt("Cantidad con la que paga el cliente:");
-    if (pago === null) return;
-    const total = parseFloat(document.getElementById('totalPagar').innerText.replace('$', ''));
-    const pagoNum = parseFloat(pago);
-    if (isNaN(pagoNum) || pagoNum < total) return alert("❌ Pago insuficiente");
+    if (carrito.length === 0) return alert("Carrito vacío");
 
-    fetch('/finalizar_venta', {
+    let pago = prompt("Pago:");
+    if (!pago) return;
+
+    let total = parseFloat(document.getElementById('totalPagar').innerText);
+    let pagoNum = parseFloat(pago);
+
+    if (pagoNum < total) return alert("Pago insuficiente");
+
+    fetch('https://android-production-3e1e.up.railway.app/finalizar_venta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ carrito: carrito })
+        body: JSON.stringify({ carrito })
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const cambio = pagoNum - total;
+            let cambio = pagoNum - total;
+
             document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
-            alert(`✅ Venta Exitosa. Cambio: $${cambio.toFixed(2)}`);
+
+            alert("Venta realizada");
+
             carrito = [];
             actualizarTabla();
+
+            setTimeout(() => location.reload(), 1000);
         }
-    });
+    })
+    .catch(err => console.error(err));
 }
 
+// 🔥 CANCELAR
 function cancelarVenta() {
-    if (confirm("¿Cancelar venta?")) {
-        carrito = [];
-        actualizarTabla();
-        document.getElementById('cambioEntregado').innerText = "$0.00";
-    }
+    if (!confirm("Cancelar venta?")) return;
+
+    carrito = [];
+    actualizarTabla();
+
+    document.getElementById('cambioEntregado').innerText = "$0.00";
 }
+
+// 🔥 INPUT MANUAL
+document.getElementById('buscadorVentas').addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+        buscarYAgregar(e.target.value);
+        e.target.value = '';
+    }
+});
 </script>
+
 {% endblock %}
