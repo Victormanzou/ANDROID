@@ -23,8 +23,14 @@ def index():
         productos = Producto.obtener_todos() or []
         productos = [dict(p) for p in productos]
 
-        stock_bajo = [p for p in productos if p.get('stock', 0) <= p.get('stock_minimo', 0)]
-        productos_vencidos = [p for p in productos if p.get('fecha_vencimiento')]
+        stock_bajo = [
+            p for p in productos
+            if p.get('stock', 0) <= p.get('stock_minimo', 0)
+        ]
+
+        productos_vencidos = [
+            p for p in productos if p.get('fecha_vencimiento')
+        ]
 
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
@@ -42,10 +48,12 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            gastos = db.execute("""
+            row = db.execute("""
                 SELECT COALESCE(SUM(cantidad * costo_unitario),0)
                 FROM compras
-            """).fetchone()[0] or 0
+            """).fetchone()
+
+            gastos = row[0] if row else 0
 
             db.close()
 
@@ -115,15 +123,19 @@ def finanzas():
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        ingresos = db.execute("""
-            SELECT COALESCE(SUM(total),0)
-            FROM ventas
-        """).fetchone()[0] or 0
+        row1 = db.execute("""
+            SELECT COALESCE(SUM(total),0) FROM ventas
+        """).fetchone()
+        ingresos = row1[0] if row1 else 0
 
-        gastos = db.execute("""
-            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-            FROM compras
-        """).fetchone()[0] or 0
+        try:
+            row2 = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                FROM compras
+            """).fetchone()
+            gastos = row2[0] if row2 else 0
+        except:
+            gastos = 0
 
         db.close()
 
@@ -141,15 +153,19 @@ def finanzas():
 
 
 # =========================
-# GUARDAR GASTO (🔥 ARREGLADO)
+# GUARDAR GASTO (100% FUNCIONAL)
 # =========================
 @app.route('/guardar_gasto', methods=['POST'])
 def guardar_gasto():
     try:
-        # IMPORTANTE: viene desde FORM (no JSON)
-        concepto = request.form.get("concepto", "Gasto")
-        monto = float(request.form.get("monto") or 0)
-        fecha = request.form.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+        concepto = request.form.get("concepto")
+        monto = request.form.get("monto")
+        fecha = request.form.get("fecha")
+
+        if not concepto or not monto:
+            return redirect(url_for('finanzas'))
+
+        monto = float(monto)
 
         from database.conexion import obtener_conexion
         db = obtener_conexion()
