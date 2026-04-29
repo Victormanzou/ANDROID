@@ -8,7 +8,7 @@
             <div class="card-body">
 
                 <!-- HEADER -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="fw-bold mb-0">
                         <i class="bi bi-cart4 text-primary"></i> Punto de Venta
                     </h4>
@@ -19,21 +19,14 @@
                 </div>
 
                 <!-- CÁMARA -->
-                <div id="contenedor-lector"
-                     style="display:none; border:2px solid #0d6efd; padding:10px; border-radius:10px;">
+                <div id="contenedor-lector" style="display:none; border:2px solid #0d6efd; padding:10px; border-radius:10px;">
                     <div id="reader"></div>
-                    <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">
-                        Detener Cámara
-                    </button>
+                    <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">Detener Cámara</button>
                 </div>
 
                 <!-- INPUT -->
-                <input type="text"
-                       id="buscadorVentas"
-                       class="form-control mb-3"
-                       placeholder="Escanea o escribe código"
-                       autocomplete="off"
-                       inputmode="text">
+                <input type="text" id="buscadorVentas" class="form-control mb-3"
+                       placeholder="Escanea o escribe código" autocomplete="off">
 
                 <!-- TABLA -->
                 <table class="table">
@@ -53,7 +46,7 @@
         </div>
     </div>
 
-    <!-- PANEL DERECHO -->
+    <!-- PANEL -->
     <div class="col-md-4">
 
         <div class="card bg-primary text-white text-center p-3 mb-3">
@@ -71,19 +64,20 @@
             CANCELAR
         </button>
 
-        <hr>
-
-        <div class="d-flex justify-content-between">
-            <span>Artículos:</span>
-            <span id="conteoArticulos">0</span>
-        </div>
-
         <div class="alert alert-secondary text-center mt-3">
             Cambio:
             <h4 id="cambioEntregado">$0.00</h4>
         </div>
 
     </div>
+</div>
+
+<!-- 🧾 TICKET OCULTO -->
+<div id="ticket" style="display:none; padding:20px; border:1px solid #000; margin-top:20px;">
+    <h4>🧾 Ticket de Venta</h4>
+    <div id="ticketContenido"></div>
+    <hr>
+    <h5 id="ticketTotal"></h5>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -94,7 +88,7 @@ let scanner = null;
 let bloqueado = false;
 
 /* =========================
-   📷 CÁMARA TRASERA DIRECTA
+   📷 CÁMARA
 ========================= */
 function toggleEscaner() {
     const c = document.getElementById('contenedor-lector');
@@ -105,14 +99,13 @@ function toggleEscaner() {
     } else {
         c.style.display = 'none';
         if (scanner) {
-            scanner.clear().catch(()=>{});
+            scanner.clear();
             scanner = null;
         }
     }
 }
 
 function iniciarEscaner() {
-
     Html5Qrcode.getCameras().then(devices => {
 
         let cameraId = devices.find(d =>
@@ -122,178 +115,124 @@ function iniciarEscaner() {
 
         scanner = new Html5Qrcode("reader");
 
-        scanner.start(
-            cameraId,
-            {
-                fps: 12,
-                qrbox: 220
-            },
-            (text) => {
+        scanner.start(cameraId, { fps: 10, qrbox: 200 }, (text) => {
 
-                if (bloqueado) return;
-                bloqueado = true;
+            if (bloqueado) return;
+            bloqueado = true;
 
-                buscarYAgregar(text);
-                vibrar();
-
-                setTimeout(() => bloqueado = false, 1200);
-            }
-        );
-
+            buscar(text);
+            setTimeout(()=> bloqueado=false, 1000);
+        });
     });
 }
 
 /* =========================
-   🔍 BUSCAR PRODUCTO
+   🔍 BUSCAR
 ========================= */
-function buscarYAgregar(codigo) {
-    if (!codigo) return;
-
+function buscar(codigo){
     fetch(`/buscar_producto/${codigo}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) agregar(data.producto);
-        });
+    .then(r=>r.json())
+    .then(d=>{
+        if(d.success) agregar(d.producto);
+    });
 }
 
 /* =========================
    ➕ AGREGAR
 ========================= */
-function agregar(p) {
+function agregar(p){
 
-    let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
+    let ex = carrito.find(x=>x.codigo_barras===p.codigo_barras);
 
-    if (ex) ex.cantidad++;
+    if(ex) ex.cantidad++;
     else carrito.push({
-        codigo_barras: p.codigo_barras,
-        nombre: p.nombre,
-        precio: p.precio_venta,
-        cantidad: 1
+        codigo_barras:p.codigo_barras,
+        nombre:p.nombre,
+        precio:p.precio_venta,
+        cantidad:1
     });
 
     render();
 }
 
 /* =========================
-   🔄 RENDER (CON + y -)
+   RENDER
 ========================= */
-function render() {
+function render(){
 
-    let lista = document.getElementById('listaVenta');
-    lista.innerHTML = '';
-
+    let html = "";
     let total = 0;
-    let items = 0;
 
-    carrito.forEach((p, i) => {
-
-        let sub = p.precio * p.cantidad;
+    carrito.forEach((p,i)=>{
+        let sub = p.precio*p.cantidad;
         total += sub;
-        items += p.cantidad;
 
-        lista.innerHTML += `
+        html += `
         <tr>
             <td>${p.nombre}</td>
-
-            <td class="text-center">
-                <button onclick="menos(${i})">-</button>
-                ${p.cantidad}
-                <button onclick="mas(${i})">+</button>
-            </td>
-
+            <td>${p.cantidad}</td>
             <td>$${p.precio}</td>
             <td>$${sub.toFixed(2)}</td>
-            <td><button onclick="del(${i})">X</button></td>
+            <td><button onclick="eliminar(${i})">X</button></td>
         </tr>`;
     });
 
-    document.getElementById('totalPagar').innerText = `$${total.toFixed(2)}`;
-    document.getElementById('conteoArticulos').innerText = items;
+    document.getElementById("listaVenta").innerHTML = html;
+    document.getElementById("totalPagar").innerText = `$${total.toFixed(2)}`;
 }
 
 /* =========================
-   ➕ ➖ CANTIDAD
+   ELIMINAR
 ========================= */
-function mas(i){
-    carrito[i].cantidad++;
-    render();
-}
-
-function menos(i){
-    carrito[i].cantidad--;
-    if (carrito[i].cantidad <= 0) carrito.splice(i,1);
-    render();
-}
-
-function del(i){
+function eliminar(i){
     carrito.splice(i,1);
     render();
 }
 
 /* =========================
-   💰 COBRAR
+   💰 COBRAR + TICKET
 ========================= */
-function finalizarVenta() {
+function finalizarVenta(){
 
-    if (carrito.length === 0) return;
+    if(carrito.length===0) return;
 
-    let pago = parseFloat(document.getElementById('inputPago').value);
-    let total = parseFloat(document.getElementById('totalPagar').innerText.replace('$',''));
+    let pago = parseFloat(document.getElementById("inputPago").value);
+    let total = parseFloat(document.getElementById("totalPagar").innerText.replace("$",""));
 
-    if (isNaN(pago) || pago < total) return;
+    if(isNaN(pago) || pago < total) return;
 
-    fetch('/finalizar_venta', {
+    fetch('/finalizar_venta',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ carrito })
+        body:JSON.stringify({carrito})
     })
     .then(r=>r.json())
     .then(()=>{
 
-        document.getElementById('cambioEntregado').innerText =
+        let ticketHTML = "";
+        carrito.forEach(p=>{
+            ticketHTML += `<p>${p.nombre} x${p.cantidad} = $${p.precio*p.cantidad}</p>`;
+        });
+
+        document.getElementById("ticketContenido").innerHTML = ticketHTML;
+        document.getElementById("ticketTotal").innerText = "Total: $" + total;
+
+        document.getElementById("ticket").style.display = "block";
+
+        document.getElementById("cambioEntregado").innerText =
             `$${(pago-total).toFixed(2)}`;
 
         carrito = [];
         render();
-        document.getElementById('inputPago').value = '';
     });
 }
 
 /* =========================
-   ❌ CANCELAR
+   CANCELAR
 ========================= */
-function cancelarVenta() {
-    carrito = [];
+function cancelarVenta(){
+    carrito=[];
     render();
-    document.getElementById('inputPago').value = '';
-    document.getElementById('cambioEntregado').innerText = "$0.00";
-}
-
-/* =========================
-   ⌨️ ENTER FIX ANDROID
-========================= */
-window.onload = function () {
-
-    const input = document.getElementById('buscadorVentas');
-
-    input.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter') {
-            e.preventDefault();
-
-            let codigo = input.value.trim();
-            if (!codigo) return;
-
-            buscarYAgregar(codigo);
-            input.value = '';
-        }
-    });
-};
-
-/* =========================
-   🔊 VIBRACIÓN
-========================= */
-function vibrar(){
-    if (navigator.vibrate) navigator.vibrate(80);
 }
 </script>
 
