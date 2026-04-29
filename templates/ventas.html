@@ -1,3 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+
+                <!-- HEADER -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">
+                        <i class="bi bi-cart4 text-primary"></i> Punto de Venta
+                    </h4>
+
+                    <button class="btn btn-primary" onclick="toggleEscaner()">
+                        <i class="bi bi-camera"></i> Escanear
+                    </button>
+                </div>
+
+                <!-- CÁMARA -->
+                <div id="contenedor-lector"
+                     style="display:none; border:2px solid #0d6efd; padding:10px; border-radius:10px;">
+                    <div id="reader"></div>
+                    <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">
+                        Detener Cámara
+                    </button>
+                </div>
+
+                <!-- INPUT -->
+                <input type="text"
+                       id="buscadorVentas"
+                       class="form-control mb-3"
+                       placeholder="Escanea o escribe código"
+                       autocomplete="off"
+                       inputmode="text">
+
+                <!-- TABLA -->
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cant</th>
+                            <th>Precio</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaVenta"></tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL DERECHO -->
+    <div class="col-md-4">
+
+        <div class="card bg-primary text-white text-center p-3 mb-3">
+            <h5>Total</h5>
+            <h1 id="totalPagar">$0.00</h1>
+        </div>
+
+        <input type="number" id="inputPago" class="form-control mb-2" placeholder="Pago cliente">
+
+        <button class="btn btn-success w-100 mb-2" onclick="finalizarVenta()">
+            COBRAR
+        </button>
+
+        <button class="btn btn-danger w-100" onclick="cancelarVenta()">
+            CANCELAR
+        </button>
+
+        <hr>
+
+        <div class="d-flex justify-content-between">
+            <span>Artículos:</span>
+            <span id="conteoArticulos">0</span>
+        </div>
+
+        <div class="alert alert-secondary text-center mt-3">
+            Cambio:
+            <h4 id="cambioEntregado">$0.00</h4>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <script>
 let carrito = [];
 let scanner = null;
@@ -34,7 +124,7 @@ function iniciarEscaner() {
 
         scanner.start(
             cameraId,
-            { fps: 10, qrbox: 200 },
+            { fps: 12, qrbox: 220 },
             (text) => {
 
                 if (bloqueado) return;
@@ -43,47 +133,48 @@ function iniciarEscaner() {
                 buscarYAgregar(text);
                 vibrar();
 
-                setTimeout(()=> bloqueado = false, 1000);
+                setTimeout(() => bloqueado = false, 1200);
             }
         );
+
     });
 }
 
 /* =========================
    🔍 BUSCAR
 ========================= */
-function buscarYAgregar(codigo){
-    if(!codigo) return;
+function buscarYAgregar(codigo) {
+    if (!codigo) return;
 
     fetch(`/buscar_producto/${codigo}`)
-    .then(r=>r.json())
-    .then(data=>{
-        if(data.success) agregar(data.producto);
-    });
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) agregar(data.producto);
+        });
 }
 
 /* =========================
    ➕ AGREGAR
 ========================= */
-function agregar(p){
+function agregar(p) {
 
-    let ex = carrito.find(x=>x.codigo_barras === p.codigo_barras);
+    let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
-    if(ex) ex.cantidad++;
+    if (ex) ex.cantidad++;
     else carrito.push({
-        codigo_barras:p.codigo_barras,
-        nombre:p.nombre,
-        precio:p.precio_venta,
-        cantidad:1
+        codigo_barras: p.codigo_barras,
+        nombre: p.nombre,
+        precio: p.precio_venta,
+        cantidad: 1
     });
 
     render();
 }
 
 /* =========================
-   RENDER
+   🔄 RENDER
 ========================= */
-function render(){
+function render() {
 
     let lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
@@ -91,7 +182,7 @@ function render(){
     let total = 0;
     let items = 0;
 
-    carrito.forEach((p,i)=>{
+    carrito.forEach((p, i) => {
 
         let sub = p.precio * p.cantidad;
         total += sub;
@@ -101,7 +192,7 @@ function render(){
         <tr>
             <td>${p.nombre}</td>
 
-            <td>
+            <td class="text-center">
                 <button onclick="menos(${i})">-</button>
                 ${p.cantidad}
                 <button onclick="mas(${i})">+</button>
@@ -118,40 +209,28 @@ function render(){
 }
 
 /* =========================
-   CANTIDADES
+   CONTROLES
 ========================= */
-function mas(i){
-    carrito[i].cantidad++;
-    render();
-}
-
-function menos(i){
-    carrito[i].cantidad--;
-    if(carrito[i].cantidad <= 0) carrito.splice(i,1);
-    render();
-}
-
-function del(i){
-    carrito.splice(i,1);
-    render();
-}
+function mas(i){ carrito[i].cantidad++; render(); }
+function menos(i){ carrito[i].cantidad--; if(carrito[i].cantidad<=0) carrito.splice(i,1); render(); }
+function del(i){ carrito.splice(i,1); render(); }
 
 /* =========================
-   💰 COBRAR
+   COBRAR
 ========================= */
-function finalizarVenta(){
+function finalizarVenta() {
 
-    if(carrito.length === 0) return;
+    if (carrito.length === 0) return;
 
     let pago = parseFloat(document.getElementById('inputPago').value);
     let total = parseFloat(document.getElementById('totalPagar').innerText.replace('$',''));
 
-    if(isNaN(pago) || pago < total) return;
+    if (isNaN(pago) || pago < total) return;
 
-    fetch('/finalizar_venta',{
+    fetch('/finalizar_venta', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({carrito})
+        body: JSON.stringify({ carrito })
     })
     .then(r=>r.json())
     .then(()=>{
@@ -166,9 +245,9 @@ function finalizarVenta(){
 }
 
 /* =========================
-   ❌ CANCELAR
+   CANCELAR
 ========================= */
-function cancelarVenta(){
+function cancelarVenta() {
     carrito = [];
     render();
     document.getElementById('inputPago').value = '';
@@ -176,35 +255,32 @@ function cancelarVenta(){
 }
 
 /* =========================
-   ⌨️ ENTER FIX ANDROID (IMPORTANTE)
+   🔥 FIX ANDROID ENTER (IMPORTANTE)
 ========================= */
-window.onload = function () {
+window.addEventListener('DOMContentLoaded', () => {
 
     const input = document.getElementById('buscadorVentas');
 
-    input.focus(); // 🔥 siempre listo como POS
-
-    input.addEventListener('keydown', function (e) {
+    input.addEventListener('keydown', function(e) {
 
         if (e.key === 'Enter') {
-            e.preventDefault();   // 🔥 bloquea “siguiente”
-            e.stopPropagation();
+            e.preventDefault(); // 🔥 evita comportamiento raro Android
 
-            let codigo = input.value.trim();
+            let codigo = this.value.trim();
             if (!codigo) return;
 
             buscarYAgregar(codigo);
-            input.value = '';
-
-            input.focus(); // 🔥 vuelve al input automático
+            this.value = '';
         }
     });
-};
+});
 
 /* =========================
-   🔊 VIBRACIÓN
+   VIBRACIÓN
 ========================= */
 function vibrar(){
-    if(navigator.vibrate) navigator.vibrate(80);
+    if (navigator.vibrate) navigator.vibrate(80);
 }
 </script>
+
+{% endblock %}
