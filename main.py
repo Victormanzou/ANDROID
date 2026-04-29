@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
-import sqlite3
 
 from models import Producto, Venta, Merma, Compra, Categoria
 
@@ -25,18 +24,20 @@ def index():
 
         stock_bajo = [
             p for p in productos
-            if p['stock'] <= p['stock_minimo']
+            if p.get('stock', 0) <= p.get('stock_minimo', 0)
         ]
 
         productos_vencidos = [
             p for p in productos
-            if p['fecha_vencimiento']
+            if p.get('fecha_vencimiento')
         ]
 
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-        # 👇 NUEVO: ventas recientes (para el index)
-        ventas_recientes = Venta.obtener_recientes(10)
+        # 🔥 EVITA CRASH SI NO EXISTE EL MÉTODO
+        ventas_recientes = []
+        if hasattr(Venta, "obtener_recientes"):
+            ventas_recientes = Venta.obtener_recientes(10) or []
 
         metricas = {
             'ventas_hoy': resumen_hoy.get('total', 0),
@@ -48,7 +49,7 @@ def index():
         alertas = [
             {
                 'tipo': 'Stock',
-                'mensaje': f"{p['nombre']} bajo stock",
+                'mensaje': f"{p.get('nombre','Producto')} bajo stock",
                 'color': 'warning',
                 'fecha': 'Hoy'
             }
@@ -60,7 +61,7 @@ def index():
             metricas=metricas,
             alertas=alertas,
             productos_vencidos=productos_vencidos,
-            ventas_recientes=ventas_recientes,   # 👈 IMPORTANTE
+            ventas_recientes=ventas_recientes,
             finanzas={},
             reporte_diario={},
             reporte_semanal={}
@@ -94,7 +95,6 @@ def agregar_producto():
         )
 
         Producto.insertar(datos)
-
         return redirect(url_for('inventario'))
 
     except Exception as e:
@@ -164,7 +164,6 @@ def agregar_compra():
         costo = float(request.form.get('costo_unitario'))
 
         Compra.registrar_entrada(codigo, cantidad, costo)
-
         return redirect(url_for('compras'))
 
     except Exception as e:
