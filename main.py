@@ -42,7 +42,7 @@ def ventas():
 @app.route('/finalizar_venta', methods=['POST'])
 def finalizar_venta():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         carrito = data.get("carrito", [])
 
         if not carrito:
@@ -63,29 +63,40 @@ def finalizar_venta():
 def inventario():
     try:
         productos = Producto.obtener_todos() or []
-        return render_template('inventario.html', productos=[dict(p) for p in productos])
+        return render_template(
+            'inventario.html',
+            productos=[dict(p) for p in productos]
+        )
     except:
         return render_template('inventario.html', productos=[])
 
 
 # =========================
-# FINANZAS
+# FINANZAS (BLINDADO)
 # =========================
 @app.route('/finanzas')
 def finanzas():
+    ingresos = 0
+    gastos = 0
+
     try:
         from database.conexion import obtener_conexion
         db = obtener_conexion()
 
-        ingresos = db.execute("""
-            SELECT COALESCE(SUM(total),0)
-            FROM ventas
-        """).fetchone()[0] or 0
+        try:
+            ingresos = db.execute("""
+                SELECT COALESCE(SUM(total),0) FROM ventas
+            """).fetchone()[0] or 0
+        except:
+            ingresos = 0
 
-        gastos = db.execute("""
-            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-            FROM compras
-        """).fetchone()[0] or 0
+        try:
+            gastos = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+                FROM compras
+            """).fetchone()[0] or 0
+        except:
+            gastos = 0
 
         db.close()
 
@@ -94,9 +105,9 @@ def finanzas():
         gastos = 0
 
     resumen = {
-        "ingresos_mes": float(ingresos),
-        "egresos_mes": float(gastos),
-        "balance": float(ingresos) - float(gastos)
+        "ingresos_mes": float(ingresos or 0),
+        "egresos_mes": float(gastos or 0),
+        "balance": float(ingresos or 0) - float(gastos or 0)
     }
 
     return render_template("finanzas.html", resumen=resumen, cuentas=[])
@@ -130,11 +141,14 @@ def agregar_gasto():
 
 
 # =========================
-# 🔥 IMPORTANTE: ESTO ARREGLA TU ERROR
+# COMPRAS (BLINDADO)
 # =========================
 @app.route('/compras')
 def compras():
-    return render_template("compras.html")
+    try:
+        return render_template("compras.html")
+    except:
+        return "ERROR COMPRAS"
 
 
 # =========================
