@@ -42,16 +42,22 @@ def index():
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
-        if hasattr(Venta, "obtener_recientes"):
-            ventas_recientes = Venta.obtener_recientes(10) or []
-            ventas_recientes = [dict(v) for v in ventas_recientes]
+        try:
+            if hasattr(Venta, "obtener_recientes"):
+                ventas_recientes = Venta.obtener_recientes(10) or []
+                ventas_recientes = [dict(v) for v in ventas_recientes]
+        except:
+            ventas_recientes = []
 
         # =========================
-        # 🔥 ABC PRODUCTOS (FALTANTE REAL)
+        # ABC PRODUCTOS (SEGURIZADO)
         # =========================
         abc_productos = []
-        if hasattr(Producto, "analisis_abc"):
-            abc_productos = Producto.analisis_abc() or []
+        try:
+            if hasattr(Producto, "analisis_abc"):
+                abc_productos = Producto.analisis_abc() or []
+        except:
+            abc_productos = []
 
         # =========================
         # MÉTRICAS
@@ -82,7 +88,7 @@ def index():
             alertas=alertas,
             productos_vencidos=productos_vencidos,
             ventas_recientes=ventas_recientes,
-            abc_productos=abc_productos,   # 🔥 IMPORTANTE
+            abc_productos=abc_productos,
             finanzas={},
             reporte_diario={},
             reporte_semanal={}
@@ -228,11 +234,34 @@ def agregar_compra():
 
 
 # =========================
-# FINANZAS
+# FINANZAS (YA FUNCIONAL)
 # =========================
 @app.route('/finanzas')
 def finanzas():
-    return render_template('finanzas.html')
+    from database.conexion import obtener_conexion
+
+    db = obtener_conexion()
+
+    ingresos = db.execute("""
+        SELECT SUM(total) as total
+        FROM ventas
+    """).fetchone()["total"] or 0
+
+    gastos = db.execute("""
+        SELECT SUM(cantidad * costo_unitario) as total
+        FROM compras
+    """).fetchone()["total"] or 0
+
+    db.close()
+
+    utilidad = ingresos - gastos
+
+    return render_template(
+        'finanzas.html',
+        ingresos=ingresos,
+        gastos=gastos,
+        utilidad=utilidad
+    )
 
 
 # =========================
