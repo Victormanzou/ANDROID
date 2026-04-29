@@ -1,19 +1,27 @@
 from database.conexion import obtener_conexion
-from datetime import datetime
+
 
 class Venta:
 
+    # =========================
+    # REGISTRAR VENTA SIMPLE
+    # =========================
     @staticmethod
     def registrar(total, utilidad):
         db = obtener_conexion()
+
         db.execute(
             'INSERT INTO ventas (total, utilidad) VALUES (?, ?)',
             (total, utilidad)
         )
+
         db.commit()
         db.close()
 
-    # 🔥 NUEVO: registrar venta desde carrito
+
+    # =========================
+    # REGISTRAR VENTA DESDE CARRITO (PUNTO DE VENTA)
+    # =========================
     @staticmethod
     def registrar_transaccion(carrito):
         db = obtener_conexion()
@@ -25,9 +33,16 @@ class Venta:
             subtotal = item['precio'] * item['cantidad']
             total += subtotal
 
-            # utilidad simple (puedes mejorarla después)
-            utilidad += subtotal * 0.3  # ejemplo 30%
+            # utilidad estimada (puedes mejorar luego con costo real)
+            utilidad += subtotal * 0.3
 
+            # 🔥 DESCARGA DE INVENTARIO
+            db.execute(
+                "UPDATE productos SET stock = stock - ? WHERE codigo_barras = ?",
+                (item['cantidad'], item['codigo_barras'])
+            )
+
+        # 🔥 GUARDAR VENTA
         db.execute(
             'INSERT INTO ventas (total, utilidad) VALUES (?, ?)',
             (total, utilidad)
@@ -38,6 +53,10 @@ class Venta:
 
         return total
 
+
+    # =========================
+    # RESUMEN DEL DÍA (DASHBOARD)
+    # =========================
     @staticmethod
     def obtener_resumen_hoy():
         db = obtener_conexion()
@@ -45,8 +64,8 @@ class Venta:
         resumen = db.execute('''
             SELECT 
                 SUM(total) as total,
-                SUM(utilidad) as utilidad 
-            FROM ventas 
+                SUM(utilidad) as utilidad
+            FROM ventas
             WHERE DATE(fecha) = DATE('now')
         ''').fetchone()
 
@@ -58,18 +77,27 @@ class Venta:
                 "utilidad": resumen["utilidad"] or 0
             }
 
-        return {"total": 0, "utilidad": 0}
+        return {
+            "total": 0,
+            "utilidad": 0
+        }
 
-    # 🔥 NUEVO: para dashboard (últimas ventas)
+
+    # =========================
+    # VENTAS RECIENTES (INDEX)
+    # =========================
     @staticmethod
     def obtener_recientes(limit=10):
         db = obtener_conexion()
 
         rows = db.execute('''
-            SELECT * FROM ventas
+            SELECT id, fecha, total, utilidad
+            FROM ventas
             ORDER BY fecha DESC
             LIMIT ?
         ''', (limit,)).fetchall()
 
         db.close()
-        return rows
+
+        # 🔥 FIX CRÍTICO: convertir sqlite Row a dict
+        return [dict(row) for row in rows]
