@@ -20,9 +20,6 @@ app.jinja_env.auto_reload = True
 @app.route('/')
 def index():
     try:
-        # =========================
-        # PRODUCTOS (FIX SQLITE ROW)
-        # =========================
         productos = Producto.obtener_todos() or []
         productos = [dict(p) for p in productos]
 
@@ -36,19 +33,12 @@ def index():
             if p.get('fecha_vencimiento')
         ]
 
-        # =========================
-        # RESUMEN VENTAS
-        # =========================
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-        # ventas recientes (seguro)
         ventas_recientes = []
         if hasattr(Venta, "obtener_recientes"):
             ventas_recientes = Venta.obtener_recientes(10) or []
 
-        # =========================
-        # MÉTRICAS
-        # =========================
         metricas = {
             'ventas_hoy': resumen_hoy.get('total', 0),
             'utilidad_hoy': resumen_hoy.get('utilidad', 0),
@@ -56,9 +46,6 @@ def index():
             'mermas_mes': 50.00
         }
 
-        # =========================
-        # ALERTAS
-        # =========================
         alertas = [
             {
                 'tipo': 'Stock',
@@ -82,6 +69,40 @@ def index():
 
     except Exception as e:
         return f"ERROR INDEX: {str(e)}"
+
+
+# =========================
+# 📊 NUEVO: VENTAS POR HORA (TIEMPO REAL)
+# =========================
+@app.route('/api/ventas_por_hora')
+def ventas_por_hora():
+    try:
+        db = Venta.obtener_resumen_hoy
+
+        from database.conexion import obtener_conexion
+        conn = obtener_conexion()
+
+        rows = conn.execute("""
+            SELECT 
+                strftime('%H', fecha) as hora,
+                SUM(total) as total
+            FROM ventas
+            WHERE DATE(fecha) = DATE('now')
+            GROUP BY hora
+            ORDER BY hora
+        """).fetchall()
+
+        conn.close()
+
+        datos = {f"{i:02d}": 0 for i in range(24)}
+
+        for r in rows:
+            datos[r["hora"]] = r["total"] or 0
+
+        return jsonify(datos)
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 # =========================
