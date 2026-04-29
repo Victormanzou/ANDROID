@@ -6,6 +6,9 @@ from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
 
+# =========================
+# CONFIG (cache fix)
+# =========================
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.jinja_env.auto_reload = True
@@ -29,11 +32,11 @@ def index():
             if p['fecha_vencimiento']
         ]
 
-        resumen_hoy = Venta.obtener_resumen_hoy() or {'total': 0, 'utilidad': 0}
+        resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         metricas = {
-            'ventas_hoy': resumen_hoy['total'],
-            'utilidad_hoy': resumen_hoy['utilidad'],
+            'ventas_hoy': resumen_hoy.get('total', 0),
+            'utilidad_hoy': resumen_hoy.get('utilidad', 0),
             'conteo_stock_bajo': len(stock_bajo),
             'mermas_mes': 50.00
         }
@@ -67,24 +70,30 @@ def index():
 # =========================
 @app.route('/inventario')
 def inventario():
-    productos = Producto.obtener_todos()
+    productos = Producto.obtener_todos() or []
     return render_template('inventario.html', productos=productos)
 
 
 @app.route('/inventario/agregar', methods=['POST'])
 def agregar_producto():
-    datos = (
-        request.form.get('codigo'),
-        request.form.get('nombre'),
-        request.form.get('categoria'),
-        float(request.form.get('p_compra') or 0),
-        float(request.form.get('p_venta') or 0),
-        int(request.form.get('stock') or 0),
-        int(request.form.get('stock_min') or 5),
-        request.form.get('vencimiento')
-    )
-    Producto.insertar(datos)
-    return redirect(url_for('inventario'))
+    try:
+        datos = (
+            request.form.get('codigo'),
+            request.form.get('nombre'),
+            request.form.get('categoria'),
+            float(request.form.get('p_compra') or 0),
+            float(request.form.get('p_venta') or 0),
+            int(request.form.get('stock') or 0),
+            int(request.form.get('stock_min') or 5),
+            request.form.get('vencimiento')
+        )
+
+        Producto.insertar(datos)
+
+        return redirect(url_for('inventario'))
+
+    except Exception as e:
+        return f"Error inventario: {str(e)}"
 
 
 # =========================
@@ -99,10 +108,18 @@ def ventas():
 def buscar_producto(codigo):
     producto = Producto.buscar_por_codigo(codigo)
 
-    if producto:
-        return jsonify({'success': True, 'producto': producto})
+    if not producto:
+        return jsonify({'success': False})
 
-    return jsonify({'success': False})
+    return jsonify({
+        'success': True,
+        'producto': {
+            'codigo_barras': producto['codigo_barras'],
+            'nombre': producto['nombre'],
+            'precio_venta': producto['precio_venta'],
+            'stock': producto['stock']
+        }
+    })
 
 
 @app.route('/finalizar_venta', methods=['POST'])
@@ -111,7 +128,7 @@ def finalizar_venta():
     carrito = data.get('carrito', [])
 
     if not carrito:
-        return jsonify({'success': False})
+        return jsonify({'success': False, 'message': 'Carrito vacío'})
 
     try:
         total = Venta.registrar_transaccion(carrito)
@@ -121,11 +138,11 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS (FIX REAL)
+# COMPRAS (SIN TABLA compras)
 # =========================
 @app.route('/compras')
 def compras():
-    productos = Producto.obtener_todos()
+    productos = Producto.obtener_todos() or []
     return render_template('compras.html', productos=productos)
 
 
@@ -136,13 +153,13 @@ def agregar_compra():
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        # 🔥 SOLO ACTUALIZA STOCK (SIN TABLA compras)
+        # SOLO actualiza stock (sin tabla compras)
         Compra.registrar_entrada(codigo, cantidad, costo)
 
         return redirect(url_for('compras'))
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error compras: {str(e)}"
 
 
 # =========================
