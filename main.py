@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
 
@@ -43,8 +43,11 @@ def index():
 
         ventas_recientes = []
         if hasattr(Venta, "obtener_recientes"):
-            ventas_recientes = Venta.obtener_recientes(10) or []
-            ventas_recientes = [dict(v) for v in ventas_recientes]
+            try:
+                ventas_recientes = Venta.obtener_recientes(10) or []
+                ventas_recientes = [dict(v) for v in ventas_recientes]
+            except:
+                ventas_recientes = []
 
         # =========================
         # ABC (seguro)
@@ -80,9 +83,8 @@ def index():
         ]
 
         # =========================
-        # 💰 FINANZAS (para index)
+        # 💰 FINANZAS PARA INDEX
         # =========================
-        db = None
         ingresos = metricas["ventas_hoy"]
         gastos = 0
 
@@ -90,21 +92,17 @@ def index():
             from database.conexion import obtener_conexion
             db = obtener_conexion()
 
-            compras = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario), 0) as total
+            gastos = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario), 0)
                 FROM compras
-            """).fetchone()["total"]
+            """).fetchone()[0]
 
-            gastos = compras or 0
+            db.close()
 
         except:
             gastos = 0
 
-        finally:
-            if db:
-                db.close()
-
-        utilidad_neta = ingresos - gastos
+        utilidad = ingresos - gastos
 
         return render_template(
             "index.html",
@@ -114,10 +112,10 @@ def index():
             ventas_recientes=ventas_recientes,
             abc_productos=abc_productos,
 
-            # FINANZAS PRO
+            # FINANZAS (INDEX)
             ingresos=ingresos,
             gastos=gastos,
-            utilidad=utilidad_neta
+            utilidad=utilidad
         )
 
     except Exception as e:
@@ -148,7 +146,7 @@ def ventas_por_hora():
         datos = {f"{i:02d}": 0 for i in range(24)}
 
         for r in rows:
-            datos[r["hora"]] = r["total"]
+            datos[r["hora"]] = r["total"] or 0
 
         return jsonify(datos)
 
@@ -195,6 +193,9 @@ def compras():
     return render_template('compras.html', productos=[dict(p) for p in productos])
 
 
+# =========================
+# FINANZAS (MÓDULO COMPLETO)
+# =========================
 @app.route('/finanzas')
 def finanzas():
     from database.conexion import obtener_conexion
@@ -202,12 +203,13 @@ def finanzas():
     db = obtener_conexion()
 
     ingresos = db.execute("""
-        SELECT COALESCE(SUM(total),0) as total FROM ventas
-    """).fetchone()["total"]
+        SELECT COALESCE(SUM(total),0) FROM ventas
+    """).fetchone()[0]
 
     gastos = db.execute("""
-        SELECT COALESCE(SUM(cantidad * costo_unitario),0) as total FROM compras
-    """).fetchone()["total"]
+        SELECT COALESCE(SUM(cantidad * costo_unitario),0)
+        FROM compras
+    """).fetchone()[0]
 
     db.close()
 
