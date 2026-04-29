@@ -7,6 +7,11 @@ from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
 
+# 🔥 SOLUCIÓN CACHE (AQUÍ ESTÁ LA CLAVE)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.jinja_env.auto_reload = True
+
 # --- RUTA: DASHBOARD PRINCIPAL ---
 @app.route('/')
 def index():
@@ -129,7 +134,6 @@ def finanzas():
 @app.route('/compras')
 def compras():
     return render_template('compras.html')
-
 
 # 🔥 IMPORTANTE PARA RAILWAY Y LOCAL
 if __name__ == '__main__':
