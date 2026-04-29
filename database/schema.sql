@@ -36,3 +36,12 @@ CREATE TABLE IF NOT EXISTS cuentas_pagar (
     vence DATE,
     estado TEXT DEFAULT 'Pendiente' -- 'Pendiente', 'Urgente', 'Pagado'
 );
+-- Tabla de Compras (Entrada de mercancía)
+CREATE TABLE IF NOT EXISTS compras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo_barras TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    costo_unitario REAL NOT NULL,
+    total REAL NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+);
