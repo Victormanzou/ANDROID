@@ -20,7 +20,11 @@ app.jinja_env.auto_reload = True
 @app.route('/')
 def index():
     try:
+        # =========================
+        # PRODUCTOS (FIX SQLITE ROW)
+        # =========================
         productos = Producto.obtener_todos() or []
+        productos = [dict(p) for p in productos]
 
         stock_bajo = [
             p for p in productos
@@ -32,13 +36,19 @@ def index():
             if p.get('fecha_vencimiento')
         ]
 
+        # =========================
+        # RESUMEN VENTAS
+        # =========================
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-        # 🔥 EVITA CRASH SI NO EXISTE EL MÉTODO
+        # ventas recientes (seguro)
         ventas_recientes = []
         if hasattr(Venta, "obtener_recientes"):
             ventas_recientes = Venta.obtener_recientes(10) or []
 
+        # =========================
+        # MÉTRICAS
+        # =========================
         metricas = {
             'ventas_hoy': resumen_hoy.get('total', 0),
             'utilidad_hoy': resumen_hoy.get('utilidad', 0),
@@ -46,6 +56,9 @@ def index():
             'mermas_mes': 50.00
         }
 
+        # =========================
+        # ALERTAS
+        # =========================
         alertas = [
             {
                 'tipo': 'Stock',
@@ -77,6 +90,8 @@ def index():
 @app.route('/inventario')
 def inventario():
     productos = Producto.obtener_todos() or []
+    productos = [dict(p) for p in productos]
+
     return render_template('inventario.html', productos=productos)
 
 
@@ -153,6 +168,8 @@ def finalizar_venta():
 @app.route('/compras')
 def compras():
     productos = Producto.obtener_todos() or []
+    productos = [dict(p) for p in productos]
+
     return render_template('compras.html', productos=productos)
 
 
