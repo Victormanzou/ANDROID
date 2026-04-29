@@ -10,15 +10,12 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 
 # =========================
-# INDEX (SAFE)
+# INDEX
 # =========================
 @app.route('/')
 def index():
     try:
-        productos = Producto.obtener_todos() or []
-
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
-
         ingresos = resumen_hoy.get("total", 0)
 
         return render_template(
@@ -71,7 +68,7 @@ def inventario():
 
 
 # =========================
-# FINANZAS (NO CRASHEA NUNCA)
+# FINANZAS
 # =========================
 @app.route('/finanzas')
 def finanzas():
@@ -102,7 +99,7 @@ def finanzas():
 
 
 # =========================
-# GUARDAR GASTO (SAFE)
+# GUARDAR GASTO
 # =========================
 @app.route('/guardar_gasto', methods=['POST'])
 def guardar_gasto():
@@ -132,6 +129,14 @@ def guardar_gasto():
 
     except Exception as e:
         return f"ERROR GASTO: {e}"
+
+
+# =========================
+# 🔥 ESTO ES LO QUE TE FALTABA
+# =========================
+@app.route('/compras')
+def compras():
+    return render_template("compras.html")
 
 
 # =========================
