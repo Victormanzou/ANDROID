@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
 
-from models import Producto, Venta, Merma, Compra, Categoria
+from models import Producto, Venta, Compra
 
 app = Flask(__name__)
 
@@ -42,31 +42,28 @@ def index():
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
         ventas_recientes = []
-        try:
-            if hasattr(Venta, "obtener_recientes"):
-                ventas_recientes = Venta.obtener_recientes(10) or []
-                ventas_recientes = [dict(v) for v in ventas_recientes]
-        except:
-            ventas_recientes = []
+        if hasattr(Venta, "obtener_recientes"):
+            ventas_recientes = Venta.obtener_recientes(10) or []
+            ventas_recientes = [dict(v) for v in ventas_recientes]
 
         # =========================
-        # ABC PRODUCTOS (SEGURIZADO)
+        # ABC (seguro)
         # =========================
         abc_productos = []
-        try:
-            if hasattr(Producto, "analisis_abc"):
+        if hasattr(Producto, "analisis_abc"):
+            try:
                 abc_productos = Producto.analisis_abc() or []
-        except:
-            abc_productos = []
+            except:
+                abc_productos = []
 
         # =========================
         # MÉTRICAS
         # =========================
         metricas = {
-            'ventas_hoy': resumen_hoy.get('total', 0),
-            'utilidad_hoy': resumen_hoy.get('utilidad', 0),
-            'conteo_stock_bajo': len(stock_bajo),
-            'mermas_mes': 50.00
+            "ventas_hoy": resumen_hoy.get("total", 0),
+            "utilidad_hoy": resumen_hoy.get("utilidad", 0),
+            "conteo_stock_bajo": len(stock_bajo),
+            "mermas_mes": 0
         }
 
         # =========================
@@ -74,24 +71,53 @@ def index():
         # =========================
         alertas = [
             {
-                'tipo': 'Stock',
-                'mensaje': f"{p.get('nombre','Producto')} bajo stock",
-                'color': 'warning',
-                'fecha': 'Hoy'
+                "tipo": "Stock",
+                "mensaje": f"{p.get('nombre','Producto')} bajo stock",
+                "color": "warning",
+                "fecha": "Hoy"
             }
             for p in stock_bajo
         ]
 
+        # =========================
+        # 💰 FINANZAS (para index)
+        # =========================
+        db = None
+        ingresos = metricas["ventas_hoy"]
+        gastos = 0
+
+        try:
+            from database.conexion import obtener_conexion
+            db = obtener_conexion()
+
+            compras = db.execute("""
+                SELECT COALESCE(SUM(cantidad * costo_unitario), 0) as total
+                FROM compras
+            """).fetchone()["total"]
+
+            gastos = compras or 0
+
+        except:
+            gastos = 0
+
+        finally:
+            if db:
+                db.close()
+
+        utilidad_neta = ingresos - gastos
+
         return render_template(
-            'index.html',
+            "index.html",
             metricas=metricas,
             alertas=alertas,
             productos_vencidos=productos_vencidos,
             ventas_recientes=ventas_recientes,
             abc_productos=abc_productos,
-            finanzas={},
-            reporte_diario={},
-            reporte_semanal={}
+
+            # FINANZAS PRO
+            ingresos=ingresos,
+            gastos=gastos,
+            utilidad=utilidad_neta
         )
 
     except Exception as e:
@@ -99,7 +125,7 @@ def index():
 
 
 # =========================
-# 📊 VENTAS POR HORA (TIEMPO REAL)
+# VENTAS POR HORA
 # =========================
 @app.route('/api/ventas_por_hora')
 def ventas_por_hora():
@@ -110,7 +136,7 @@ def ventas_por_hora():
         rows = conn.execute("""
             SELECT 
                 strftime('%H', fecha) as hora,
-                SUM(total) as total
+                COALESCE(SUM(total),0) as total
             FROM ventas
             WHERE DATE(fecha) = DATE('now')
             GROUP BY hora
@@ -122,7 +148,7 @@ def ventas_por_hora():
         datos = {f"{i:02d}": 0 for i in range(24)}
 
         for r in rows:
-            datos[r["hora"]] = r["total"] or 0
+            datos[r["hora"]] = r["total"]
 
         return jsonify(datos)
 
@@ -136,30 +162,7 @@ def ventas_por_hora():
 @app.route('/inventario')
 def inventario():
     productos = Producto.obtener_todos() or []
-    productos = [dict(p) for p in productos]
-
-    return render_template('inventario.html', productos=productos)
-
-
-@app.route('/inventario/agregar', methods=['POST'])
-def agregar_producto():
-    try:
-        datos = (
-            request.form.get('codigo'),
-            request.form.get('nombre'),
-            request.form.get('categoria'),
-            float(request.form.get('p_compra') or 0),
-            float(request.form.get('p_venta') or 0),
-            int(request.form.get('stock') or 0),
-            int(request.form.get('stock_min') or 5),
-            request.form.get('vencimiento')
-        )
-
-        Producto.insertar(datos)
-        return redirect(url_for('inventario'))
-
-    except Exception as e:
-        return f"Error inventario: {str(e)}"
+    return render_template('inventario.html', productos=[dict(p) for p in productos])
 
 
 # =========================
@@ -170,42 +173,17 @@ def ventas():
     return render_template('ventas.html', now=datetime.now())
 
 
-@app.route('/buscar_producto/<codigo>')
-def buscar_producto(codigo):
-    producto = Producto.buscar_por_codigo(codigo)
-
-    if not producto:
-        return jsonify({'success': False})
-
-    return jsonify({
-        'success': True,
-        'producto': {
-            'codigo_barras': producto['codigo_barras'],
-            'nombre': producto['nombre'],
-            'precio_venta': producto['precio_venta'],
-            'stock': producto['stock']
-        }
-    })
-
-
 @app.route('/finalizar_venta', methods=['POST'])
 def finalizar_venta():
     data = request.get_json()
-    carrito = data.get('carrito', [])
+    carrito = data.get("carrito", [])
 
     if not carrito:
-        return jsonify({'success': False, 'message': 'Carrito vacío'})
+        return jsonify({"success": False})
 
-    try:
-        total = Venta.registrar_transaccion(carrito)
+    total = Venta.registrar_transaccion(carrito)
 
-        return jsonify({
-            'success': True,
-            'total': total
-        })
-
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+    return jsonify({"success": True, "total": total})
 
 
 # =========================
@@ -214,28 +192,9 @@ def finalizar_venta():
 @app.route('/compras')
 def compras():
     productos = Producto.obtener_todos() or []
-    productos = [dict(p) for p in productos]
-
-    return render_template('compras.html', productos=productos)
+    return render_template('compras.html', productos=[dict(p) for p in productos])
 
 
-@app.route('/compras/agregar', methods=['POST'])
-def agregar_compra():
-    try:
-        codigo = request.form.get('id_producto')
-        cantidad = int(request.form.get('cantidad'))
-        costo = float(request.form.get('costo_unitario'))
-
-        Compra.registrar_entrada(codigo, cantidad, costo)
-        return redirect(url_for('compras'))
-
-    except Exception as e:
-        return f"Error compras: {str(e)}"
-
-
-# =========================
-# FINANZAS (YA FUNCIONAL)
-# =========================
 @app.route('/finanzas')
 def finanzas():
     from database.conexion import obtener_conexion
@@ -243,30 +202,26 @@ def finanzas():
     db = obtener_conexion()
 
     ingresos = db.execute("""
-        SELECT SUM(total) as total
-        FROM ventas
-    """).fetchone()["total"] or 0
+        SELECT COALESCE(SUM(total),0) as total FROM ventas
+    """).fetchone()["total"]
 
     gastos = db.execute("""
-        SELECT SUM(cantidad * costo_unitario) as total
-        FROM compras
-    """).fetchone()["total"] or 0
+        SELECT COALESCE(SUM(cantidad * costo_unitario),0) as total FROM compras
+    """).fetchone()["total"]
 
     db.close()
 
-    utilidad = ingresos - gastos
-
     return render_template(
-        'finanzas.html',
+        "finanzas.html",
         ingresos=ingresos,
         gastos=gastos,
-        utilidad=utilidad
+        utilidad=ingresos - gastos
     )
 
 
 # =========================
 # RUN
 # =========================
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
