@@ -6,7 +6,6 @@ from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
 
-# 🔥 CACHE FIX
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.jinja_env.auto_reload = True
@@ -20,15 +19,8 @@ def index():
     productos = Producto.obtener_todos() or []
 
     try:
-        stock_bajo = [
-            p for p in productos
-            if p['stock'] <= p['stock_minimo']
-        ]
-
-        productos_vencidos = [
-            p for p in productos
-            if p['fecha_vencimiento']
-        ]
+        stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
+        productos_vencidos = [p for p in productos if p['fecha_vencimiento']]
 
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
@@ -53,11 +45,7 @@ def index():
             'index.html',
             metricas=metricas,
             alertas=alertas,
-            productos_abc=[],
-            productos_vencidos=productos_vencidos,
-            finanzas={},
-            reporte_diario={},
-            reporte_semanal={}
+            productos_vencidos=productos_vencidos
         )
 
     except Exception as e:
@@ -102,10 +90,7 @@ def buscar_producto(codigo):
     producto = Producto.buscar_por_codigo(codigo)
 
     if producto:
-        return jsonify({
-            'success': True,
-            'producto': producto
-        })
+        return jsonify({'success': True, 'producto': producto})
 
     return jsonify({'success': False})
 
@@ -116,7 +101,7 @@ def finalizar_venta():
     carrito = data.get('carrito', [])
 
     if not carrito:
-        return jsonify({'success': False, 'message': 'Carrito vacío'})
+        return jsonify({'success': False})
 
     try:
         total = Venta.registrar_transaccion(carrito)
@@ -126,7 +111,7 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS
+# COMPRAS (🔥 FIX FINAL)
 # =========================
 @app.route('/compras')
 def compras():
@@ -143,15 +128,16 @@ def compras():
 @app.route('/compras/agregar', methods=['POST'])
 def agregar_compra():
     try:
-        id_producto = request.form.get('id_producto')
+        codigo = request.form.get('id_producto')
         proveedor = request.form.get('proveedor')
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        total = cantidad * costo
+        # 🔥 1. registrar compra correctamente
+        Compra.registrar_entrada(codigo, cantidad, costo)
 
-        Compra.registrar((id_producto, proveedor, cantidad, costo, total))
-        Producto.aumentar_stock(id_producto, cantidad)
+        # 🔥 2. actualizar stock (usa codigo_barras)
+        Producto.aumentar_stock(codigo, cantidad)
 
         return redirect(url_for('compras'))
 
