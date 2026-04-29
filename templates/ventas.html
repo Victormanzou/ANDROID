@@ -18,10 +18,11 @@
                 </div>
 
                 <!-- CÁMARA -->
-                <div id="contenedor-lector" style="display:none; border:2px solid #0d6efd; padding:10px; border-radius:10px;">
+                <div id="contenedor-lector"
+                     style="display:none; border:2px solid #0d6efd; padding:10px; border-radius:10px;">
                     <div id="reader"></div>
                     <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">
-                        Detener
+                        Detener Cámara
                     </button>
                 </div>
 
@@ -30,7 +31,9 @@
                        id="buscadorVentas"
                        class="form-control mb-3"
                        placeholder="Escanea o escribe código"
-                       autocomplete="off">
+                       autocomplete="off"
+                       enterkeyhint="search"
+                       inputmode="text">
 
                 <!-- TABLA -->
                 <table class="table">
@@ -58,7 +61,6 @@
             <h1 id="totalPagar">$0.00</h1>
         </div>
 
-        <!-- 💰 PAGO FIJO -->
         <input type="number"
                id="inputPago"
                class="form-control mb-2"
@@ -94,9 +96,9 @@ let carrito = [];
 let scanner = null;
 let bloqueado = false;
 
-/* =========================
+/* ======================
    📷 CÁMARA
-========================= */
+====================== */
 function toggleEscaner() {
     const c = document.getElementById('contenedor-lector');
 
@@ -117,7 +119,7 @@ function iniciarEscaner() {
         scanner = new Html5QrcodeScanner("reader", {
             fps: 10,
             qrbox: 200,
-            facingMode: "environment" // 📷 cámara trasera
+            facingMode: "environment"
         });
     }
 
@@ -127,16 +129,14 @@ function iniciarEscaner() {
         bloqueado = true;
 
         buscarYAgregar(text);
-        vibrar();
 
-        setTimeout(() => bloqueado = false, 2000);
-
+        setTimeout(() => bloqueado = false, 1500);
     });
 }
 
-/* =========================
+/* ======================
    🔍 BUSCAR
-========================= */
+====================== */
 function buscarYAgregar(codigo) {
     if (!codigo) return;
 
@@ -147,9 +147,9 @@ function buscarYAgregar(codigo) {
         });
 }
 
-/* =========================
+/* ======================
    ➕ CARRITO
-========================= */
+====================== */
 function agregar(p) {
     let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
@@ -164,11 +164,11 @@ function agregar(p) {
     render();
 }
 
-/* =========================
-   🔄 TABLA
-========================= */
+/* ======================
+   🔄 RENDER
+====================== */
 function render() {
-    let t = 0;
+    let total = 0;
     let items = 0;
     let lista = document.getElementById('listaVenta');
 
@@ -176,51 +176,34 @@ function render() {
 
     carrito.forEach((p, i) => {
         let sub = p.precio * p.cantidad;
-        t += sub;
+        total += sub;
         items += p.cantidad;
 
         lista.innerHTML += `
         <tr>
             <td>${p.nombre}</td>
-            <td>
-                <input type="number" min="1"
-                    value="${p.cantidad}"
-                    onchange="edit(${i}, this.value)"
-                    style="width:60px">
-            </td>
+            <td>${p.cantidad}</td>
             <td>$${p.precio}</td>
             <td>$${sub.toFixed(2)}</td>
             <td><button onclick="del(${i})">X</button></td>
         </tr>`;
     });
 
-    document.getElementById('totalPagar').innerText = `$${t.toFixed(2)}`;
+    document.getElementById('totalPagar').innerText = `$${total.toFixed(2)}`;
     document.getElementById('conteoArticulos').innerText = items;
 }
 
-/* =========================
-   ✏️ EDITAR
-========================= */
-function edit(i, v) {
-    v = parseInt(v);
-
-    if (isNaN(v) || v <= 0) carrito.splice(i,1);
-    else carrito[i].cantidad = v;
-
-    render();
-}
-
-/* =========================
+/* ======================
    ❌ ELIMINAR
-========================= */
+====================== */
 function del(i) {
     carrito.splice(i,1);
     render();
 }
 
-/* =========================
-   💰 COBRAR (SIN ALERTS)
-========================= */
+/* ======================
+   💰 COBRAR
+====================== */
 function finalizarVenta() {
     if (carrito.length === 0) return;
 
@@ -246,9 +229,9 @@ function finalizarVenta() {
     });
 }
 
-/* =========================
+/* ======================
    ❌ CANCELAR
-========================= */
+====================== */
 function cancelarVenta() {
     carrito = [];
     render();
@@ -256,24 +239,33 @@ function cancelarVenta() {
     document.getElementById('cambioEntregado').innerText = "$0.00";
 }
 
-/* =========================
-   ⌨️ ENTER FIX
-========================= */
+/* ======================
+   ⌨️ ENTER FIX ANDROID
+====================== */
 window.onload = function () {
+
     const input = document.getElementById('buscadorVentas');
 
-    input.addEventListener('keydown', e => {
+    function procesar() {
+        const codigo = input.value.trim();
+        if (!codigo) return;
+
+        buscarYAgregar(codigo);
+        input.value = '';
+    }
+
+    input.addEventListener('keydown', function(e){
         if (e.key === 'Enter') {
             e.preventDefault();
-            buscarYAgregar(input.value.trim());
-            input.value = '';
+            procesar();
         }
+    });
+
+    input.addEventListener('keyup', function(e){
+        if (e.key === 'Enter') procesar();
     });
 };
 
-function vibrar(){
-    if(navigator.vibrate) navigator.vibrate(80);
-}
 </script>
 
 {% endblock %}
