@@ -147,11 +147,47 @@
 
 <!-- ================= SEMANA ================= -->
 <div class="tab-pane fade" id="semana">
-    <div class="card">
-        <div class="card-body">
-            <canvas id="graficaVentas" height="300"></canvas>
+
+    <div class="row">
+
+        <!-- GRÁFICA SEMANA -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="graficaVentas" height="300"></canvas>
+                </div>
+            </div>
         </div>
+
+        <!-- 🔥 ABC PRODUCTOS (LO QUE TE FALTABA) -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    📦 Clasificación ABC
+                </div>
+
+                <div class="card-body">
+                    {% if productos_abc %}
+                        {% for p in productos_abc %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>{{ p.nombre }}</span>
+                                <span class="badge 
+                                    {% if p.clase == 'A' %}bg-success
+                                    {% elif p.clase == 'B' %}bg-warning text-dark
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ p.clase }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">Sin datos ABC</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
     </div>
+
 </div>
 
 <!-- ================= FINANZAS ================= -->
@@ -189,59 +225,57 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     // ===============================
-    // 🔥 GRÁFICA EN TIEMPO REAL
+    // GRÁFICA TIEMPO REAL
     // ===============================
     let chartHoras;
 
     async function cargarGrafica() {
 
-        const res = await fetch('/api/ventas_por_hora');
-        const data = await res.json();
+        try {
+            const res = await fetch('/api/ventas_por_hora');
+            const data = await res.json();
 
-        const labels = Object.keys(data).map(h => h + ':00');
-        const valores = Object.values(data);
+            const labels = Object.keys(data).map(h => h + ':00');
+            const valores = Object.values(data);
 
-        if (!chartHoras) {
+            if (!chartHoras) {
 
-            chartHoras = new Chart(document.getElementById('graficaHoras'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Ventas por hora',
-                        data: valores,
-                        backgroundColor: 'rgba(99,102,241,0.7)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
+                chartHoras = new Chart(document.getElementById('graficaHoras'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ventas por hora',
+                            data: valores,
+                            backgroundColor: 'rgba(99,102,241,0.7)'
+                        }]
+                    }
+                });
 
-        } else {
-            chartHoras.data.labels = labels;
-            chartHoras.data.datasets[0].data = valores;
-            chartHoras.update();
+            } else {
+                chartHoras.data.labels = labels;
+                chartHoras.data.datasets[0].data = valores;
+                chartHoras.update();
+            }
+
+        } catch (e) {
+            console.log("Sin API de horas aún");
         }
     }
 
     cargarGrafica();
-
-    setInterval(() => {
-        cargarGrafica();
-    }, 8000); // cada 8 segundos
+    setInterval(cargarGrafica, 8000);
 
     // ===============================
-    // GRÁFICA SEMANAL (ESTÁTICA)
+    // SEMANA (FALLBACK SIMPLE)
     // ===============================
     new Chart(document.getElementById('graficaVentas'), {
         type: 'line',
         data: {
-            labels: ['Lun','Mar','Mie','Jue','Vie'],
+            labels: ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'],
             datasets: [{
                 label: 'Ventas',
-                data: [1000,2000,1500,3000,4000],
+                data: {{ reporte_semanal | tojson if reporte_semanal else [0,0,0,0,0,0,0] }},
                 borderColor: '#6366f1',
                 fill: true
             }]
