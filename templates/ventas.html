@@ -1,109 +1,84 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <h4 class="fw-bold mb-4"><i class="bi bi-cart4 text-primary"></i> Punto de Venta</h4>
-                
-                <div class="input-group input-group-lg mb-4">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-upc-scan text-muted"></i></span>
-                    <input type="text" id="buscadorVentas" class="form-control border-start-0" placeholder="Escanea código de barras o busca producto..." autofocus>
-                </div>
+<div class="container">
 
-                <div class="table-responsive" style="min-height: 400px;">
-                    <table class="table align-middle" id="tablaVentas">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th class="text-center">Cantidad</th>
-                                <th>Precio</th>
-                                <th>Subtotal</th>
-                                <th class="text-end"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="listaVenta">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+    <h3 class="mb-3">🛒 Punto de Venta</h3>
 
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0 bg-primary text-white mb-3">
-            <div class="card-body text-center py-4">
-                <h6 class="text-uppercase opacity-75">Total a Pagar</h6>
-                <h1 class="display-4 fw-bold mb-0" id="totalPagar">$0.00</h1>
-            </div>
-        </div>
+    <!-- 📷 BOTÓN ESCANEAR -->
+    <button class="btn btn-success mb-3 w-100" onclick="abrirEscaner()">
+        📷 Escanear producto
+    </button>
 
-        <div class="card shadow-sm border-0 p-3">
-            <button class="btn btn-success btn-lg w-100 py-3 mb-2 fw-bold shadow-sm" onclick="finalizarVenta()">
-                <i class="bi bi-cash-stack"></i> COBRAR
-            </button>
-            
-            <div class="row g-2">
-                <div class="col-6">
-                    <button class="btn btn-outline-dark w-100 py-2" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Ticket
-                    </button>
-                </div>
-                <div class="col-6">
-                    <button class="btn btn-outline-danger w-100 py-2" onclick="cancelarVenta()">
-                        <i class="bi bi-x-circle"></i> Cancelar
-                    </button>
-                </div>
-            </div>
-            
-            <hr class="my-4">
-            
-            <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Artículos:</span>
-                <span class="fw-bold" id="conteoArticulos">0</span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span class="text-muted">Fecha:</span>
-                <span class="small">{{ now.strftime('%d/%m/%Y') if now else "13/04/2026" }}</span>
-            </div>
-        </div>
+    <!-- 🔍 INPUT -->
+    <input type="text" id="buscadorVentas" class="form-control mb-3" placeholder="Escanea o escribe código..." autofocus>
 
-        <div class="alert alert-secondary border-0 mt-3 text-center">
-            <small class="d-block text-muted">Último cambio entregado:</small>
-            <h4 class="mb-0 fw-bold" id="cambioEntregado">$0.00</h4>
-        </div>
-    </div>
+    <!-- 🛒 TABLA -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cant</th>
+                <th>Precio</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="listaVenta"></tbody>
+    </table>
+
+    <!-- 💰 TOTAL -->
+    <h3>Total: $<span id="totalPagar">0.00</span></h3>
+
+    <!-- 💵 INPUT PAGO -->
+    <input type="number" id="inputPago" class="form-control mb-2" placeholder="Pago del cliente">
+
+    <!-- 🔘 BOTONES -->
+    <button class="btn btn-success w-100 mb-2" onclick="finalizarVenta()">COBRAR</button>
+    <button class="btn btn-danger w-100 mb-2" onclick="cancelarVenta()">CANCELAR</button>
+
+    <!-- 💸 CAMBIO -->
+    <h4>Cambio: <span id="cambioEntregado">$0.00</span></h4>
+
+    <!-- 📢 MENSAJES -->
+    <div id="mensaje" class="alert mt-3" style="display:none;"></div>
+
 </div>
 
 <script>
 let carrito = [];
 
-document.getElementById('buscadorVentas').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        const codigo = this.value.trim();
-        if (codigo === "") return;
-
-        fetch(`/buscar_producto/${codigo}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    agregarAlCarrito(data.producto);
-                } else {
-                    alert('❌ Producto no encontrado');
-                }
-            })
-            .catch(err => console.error('Error:', err));
-        
-        this.value = '';
+// 📷 ESCÁNER (ANDROID)
+function abrirEscaner() {
+    if (window.Android && Android.iniciarEscaner) {
+        Android.iniciarEscaner();
+    } else {
+        mostrarMensaje("⚠️ Cámara solo en app", "warning");
     }
-});
+}
 
+// 🔍 BUSCAR
+function buscarYAgregar(codigo) {
+    if (!codigo) return;
+
+    fetch(`/buscar_producto/${codigo}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            agregarAlCarrito(data.producto);
+        } else {
+            mostrarMensaje("❌ Producto no encontrado", "danger");
+        }
+    })
+    .catch(() => mostrarMensaje("❌ Error conexión", "danger"));
+}
+
+// ➕ AGREGAR
 function agregarAlCarrito(producto) {
-    const itemExistente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
+    const existente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
 
-    if (itemExistente) {
-        itemExistente.cantidad++;
+    if (existente) {
+        existente.cantidad++;
     } else {
         carrito.push({
             codigo_barras: producto.codigo_barras,
@@ -112,112 +87,120 @@ function agregarAlCarrito(producto) {
             cantidad: 1
         });
     }
+
     actualizarTabla();
 }
 
+// 🔄 ACTUALIZAR UI
 function actualizarTabla() {
-    const listaVenta = document.getElementById('listaVenta');
-    const totalPagar = document.getElementById('totalPagar');
-    const conteoArticulos = document.getElementById('conteoArticulos');
-    
-    listaVenta.innerHTML = '';
+    const lista = document.getElementById('listaVenta');
+    lista.innerHTML = '';
+
     let total = 0;
-    let items = 0;
 
-    carrito.forEach((p, index) => {
-        const subtotal = p.precio * p.cantidad;
+    carrito.forEach((p, i) => {
+        let subtotal = p.precio * p.cantidad;
         total += subtotal;
-        items += p.cantidad;
 
-        listaVenta.innerHTML += `
-            <tr>
-                <td>
-                    <span class="fw-bold d-block">${p.nombre}</span>
-                    <small class="text-muted">${p.codigo_barras}</small>
-                </td>
-                <td class="text-center" style="width: 150px;">
-                    <div class="input-group input-group-sm">
-                        <button class="btn btn-outline-secondary" onclick="cambiarCant(${index}, -1)">-</button>
-                        <input type="text" class="form-control text-center" value="${p.cantidad}" readonly>
-                        <button class="btn btn-outline-secondary" onclick="cambiarCant(${index}, 1)">+</button>
-                    </div>
-                </td>
-                <td>$${p.precio.toFixed(2)}</td>
-                <td class="fw-bold">$${subtotal.toFixed(2)}</td>
-                <td class="text-end">
-                    <button class="btn btn-link text-danger px-0" onclick="eliminarItem(${index})"><i class="bi bi-trash fs-5"></i></button>
-                </td>
-            </tr>
-        `;
+        lista.innerHTML += `
+        <tr>
+            <td>${p.nombre}</td>
+            <td>${p.cantidad}</td>
+            <td>$${p.precio}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="eliminarItem(${i})">X</button></td>
+        </tr>`;
     });
 
-    totalPagar.innerText = `$${total.toFixed(2)}`;
-    conteoArticulos.innerText = items;
+    document.getElementById('totalPagar').innerText = total.toFixed(2);
 }
 
-function cambiarCant(index, valor) {
-    carrito[index].cantidad += valor;
-    if (carrito[index].cantidad <= 0) eliminarItem(index);
+// ❌ ELIMINAR
+function eliminarItem(i) {
+    carrito.splice(i, 1);
     actualizarTabla();
 }
 
-function eliminarItem(index) {
-    carrito.splice(index, 1);
-    actualizarTabla();
-}
-
-// NUEVA FUNCIÓN: FINALIZAR VENTA (COBRAR)
+// 💰 COBRAR
 function finalizarVenta() {
     if (carrito.length === 0) {
-        alert("⚠️ El carrito está vacío");
+        mostrarMensaje("⚠️ Carrito vacío", "warning");
         return;
     }
 
-    const pago = prompt("Ingrese la cantidad con la que paga el cliente:");
-    if (pago === null) return; // Si cancela el prompt
+    let pago = parseFloat(document.getElementById('inputPago').value);
+    let total = parseFloat(document.getElementById('totalPagar').innerText);
 
-    const total = parseFloat(document.getElementById('totalPagar').innerText.replace('$', ''));
-    const pagoNum = parseFloat(pago);
-
-    if (isNaN(pagoNum) || pagoNum < total) {
-        alert("❌ Cantidad insuficiente o inválida");
+    if (isNaN(pago) || pago < total) {
+        mostrarMensaje("❌ Pago insuficiente", "danger");
         return;
     }
 
-    // Enviar datos al servidor
     fetch('/finalizar_venta', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ carrito: carrito })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carrito })
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const cambio = pagoNum - total;
+            let cambio = pago - total;
+
             document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
-            alert(`✅ Venta Exitosa\nCambio: $${cambio.toFixed(2)}`);
-            
-            // Limpiar todo para la siguiente venta
+
+            mostrarTicket(cambio);
+
             carrito = [];
             actualizarTabla();
+            document.getElementById('inputPago').value = '';
         } else {
-            alert("❌ Error: " + data.message);
+            mostrarMensaje("❌ Error en venta", "danger");
         }
     })
-    .catch(err => {
-        console.error('Error:', err);
-        alert("❌ Error de conexión con el servidor");
-    });
+    .catch(() => mostrarMensaje("❌ Error conexión", "danger"));
 }
 
+// ❌ CANCELAR
 function cancelarVenta() {
-    if (confirm("¿Seguro que deseas cancelar la venta actual?")) {
-        carrito = [];
-        actualizarTabla();
-        document.getElementById('cambioEntregado').innerText = "$0.00";
-    }
+    carrito = [];
+    actualizarTabla();
+
+    document.getElementById('cambioEntregado').innerText = "$0.00";
+    document.getElementById('inputPago').value = '';
+
+    mostrarMensaje("Venta cancelada", "secondary");
 }
+
+// 🧾 TICKET
+function mostrarTicket(cambio) {
+    let total = document.getElementById('totalPagar').innerText;
+
+    let html = `
+        🧾 Venta realizada<br>
+        Total: $${total}<br>
+        Cambio: $${cambio.toFixed(2)}
+    `;
+
+    mostrarMensaje(html, "success");
+}
+
+// 📢 MENSAJES VISUALES
+function mostrarMensaje(texto, tipo) {
+    const div = document.getElementById('mensaje');
+    div.innerHTML = texto;
+    div.className = `alert alert-${tipo}`;
+    div.style.display = 'block';
+
+    setTimeout(() => div.style.display = 'none', 3000);
+}
+
+// ⌨️ ENTER
+document.getElementById('buscadorVentas').addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+        buscarYAgregar(e.target.value.trim());
+        e.target.value = '';
+    }
+});
 </script>
+
 {% endblock %}
