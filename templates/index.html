@@ -13,7 +13,8 @@
             data-bs-toggle="modal" data-bs-target="#modalCaducidad">
 
             <i class="bi bi-calendar-event-fill me-2"></i>
-            <strong>{{ productos_vencidos|length if productos_vencidos else "0" }}</strong> productos vencen pronto
+            <strong>{{ productos_vencidos|length if productos_vencidos else 0 }}</strong>
+            productos vencen pronto
             <span class="badge-pulse"></span>
 
         </button>
@@ -27,11 +28,13 @@
             Operación Hoy
         </button>
     </li>
+
     <li class="nav-item">
         <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#semana">
             Análisis Semanal
         </button>
     </li>
+
     <li class="nav-item">
         <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#finanzas">
             Salud Financiera
@@ -107,6 +110,7 @@
 
     </div>
 
+    <!-- VENTAS -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-white fw-bold">
             🧾 Ventas Recientes
@@ -155,7 +159,7 @@
             </div>
         </div>
 
-        <!-- 🔥 ABC BIEN PROTEGIDO -->
+        <!-- ABC -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
@@ -164,11 +168,11 @@
 
                 <div class="card-body">
 
-                    {% if abc_productos and abc_productos|length > 0 %}
+                    {% if abc_productos %}
                         {% for p in abc_productos %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span>{{ p.nombre }}</span>
-                                <span class="badge 
+                                <span class="badge
                                     {% if p.clase == 'A' %}bg-success
                                     {% elif p.clase == 'B' %}bg-warning text-dark
                                     {% else %}bg-danger{% endif %}">
@@ -191,26 +195,25 @@
 <!-- ================= FINANZAS ================= -->
 <div class="tab-pane fade" id="finanzas">
 
-    <!-- 🔥 AHORA SÍ CON DATOS REALES -->
     <div class="card p-4">
 
         <h5>💰 Salud Financiera</h5>
 
         <div class="d-flex justify-content-between">
             <span>Ingresos</span>
-            <strong class="text-success">${{ ingresos if ingresos else 0 }}</strong>
+            <strong class="text-success">${{ ingresos }}</strong>
         </div>
 
         <div class="d-flex justify-content-between">
             <span>Gastos</span>
-            <strong class="text-danger">${{ gastos if gastos else 0 }}</strong>
+            <strong class="text-danger">${{ gastos }}</strong>
         </div>
 
         <hr>
 
         <div class="d-flex justify-content-between">
             <span>Utilidad</span>
-            <strong>${{ utilidad if utilidad else 0 }}</strong>
+            <strong>${{ utilidad }}</strong>
         </div>
 
     </div>
@@ -228,15 +231,14 @@
             </div>
             <div class="modal-body">
                 {% for p in productos_vencidos %}
-                    <div>
-                        {{ p.nombre }} - {{ p.fecha_vencimiento }}
-                    </div>
+                    <div>{{ p.nombre }} - {{ p.fecha_vencimiento }}</div>
                 {% endfor %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- CHARTS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -254,7 +256,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const valores = Object.values(data);
 
             if (!chartHoras) {
-
                 chartHoras = new Chart(document.getElementById('graficaHoras'), {
                     type: 'bar',
                     data: {
@@ -266,7 +267,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         }]
                     }
                 });
-
             } else {
                 chartHoras.data.labels = labels;
                 chartHoras.data.datasets[0].data = valores;
