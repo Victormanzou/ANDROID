@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
 
-from database.conexion import obtener_conexion
 from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
@@ -13,45 +12,28 @@ app.jinja_env.auto_reload = True
 
 
 # =========================
-# INIT DB (IMPORTANTE PARA CELULAR / RAILWAY)
-# =========================
-@app.route('/init-db')
-def init_db():
-    db = obtener_conexion()
-
-    db.execute("""
-    CREATE TABLE IF NOT EXISTS compras (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        codigo_barras TEXT NOT NULL,
-        cantidad INTEGER NOT NULL,
-        costo_unitario REAL NOT NULL,
-        total REAL NOT NULL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    db.commit()
-    db.close()
-
-    return "Base de datos lista ✔"
-
-
-# =========================
-# DASHBOARD
+# DASHBOARD (FIXED)
 # =========================
 @app.route('/')
 def index():
     try:
         productos = Producto.obtener_todos() or []
 
-        stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
-        productos_vencidos = [p for p in productos if p['fecha_vencimiento']]
+        stock_bajo = [
+            p for p in productos
+            if p['stock'] <= p['stock_minimo']
+        ]
 
-        resumen_hoy = Venta.obtener_resumen_hoy() or {}
+        productos_vencidos = [
+            p for p in productos
+            if p['fecha_vencimiento']
+        ]
+
+        resumen_hoy = Venta.obtener_resumen_hoy() or (0, 0)
 
         metricas = {
-            'ventas_hoy': resumen_hoy.get('total', 0.0),
-            'utilidad_hoy': resumen_hoy.get('utilidad', 0.0),
+            'ventas_hoy': resumen_hoy['total'] if resumen_hoy else 0.0,
+            'utilidad_hoy': resumen_hoy['utilidad'] if resumen_hoy else 0.0,
             'conteo_stock_bajo': len(stock_bajo),
             'mermas_mes': 50.00
         }
@@ -70,7 +52,10 @@ def index():
             'index.html',
             metricas=metricas,
             alertas=alertas,
-            productos_vencidos=productos_vencidos
+            productos_vencidos=productos_vencidos,
+            finanzas={},   # 🔥 IMPORTANTE FIX
+            reporte_diario={},
+            reporte_semanal={}
         )
 
     except Exception as e:
@@ -115,7 +100,10 @@ def buscar_producto(codigo):
     producto = Producto.buscar_por_codigo(codigo)
 
     if producto:
-        return jsonify({'success': True, 'producto': producto})
+        return jsonify({
+            'success': True,
+            'producto': producto
+        })
 
     return jsonify({'success': False})
 
@@ -136,18 +124,12 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS
+# COMPRAS (SIN TABLA compras)
 # =========================
 @app.route('/compras')
 def compras():
     productos = Producto.obtener_todos()
-    compras = Compra.obtener_todas() if hasattr(Compra, "obtener_todas") else []
-
-    return render_template(
-        'compras.html',
-        productos=productos,
-        compras=compras
-    )
+    return render_template('compras.html', productos=productos)
 
 
 @app.route('/compras/agregar', methods=['POST'])
@@ -158,10 +140,8 @@ def agregar_compra():
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        # registrar compra + stock
+        # 🔥 SOLO ESTO ES SEGURO (sin tabla compras)
         Compra.registrar_entrada(codigo, cantidad, costo)
-
-        Producto.aumentar_stock(codigo, cantidad)
 
         return redirect(url_for('compras'))
 
