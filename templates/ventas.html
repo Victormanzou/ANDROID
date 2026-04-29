@@ -7,6 +7,7 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
 
+                <!-- HEADER -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0">
                         <i class="bi bi-cart4 text-primary"></i> Punto de Venta
@@ -32,7 +33,6 @@
                        class="form-control mb-3"
                        placeholder="Escanea o escribe código"
                        autocomplete="off"
-                       enterkeyhint="search"
                        inputmode="text">
 
                 <!-- TABLA -->
@@ -61,10 +61,7 @@
             <h1 id="totalPagar">$0.00</h1>
         </div>
 
-        <input type="number"
-               id="inputPago"
-               class="form-control mb-2"
-               placeholder="Pago del cliente">
+        <input type="number" id="inputPago" class="form-control mb-2" placeholder="Pago cliente">
 
         <button class="btn btn-success w-100 mb-2" onclick="finalizarVenta()">
             COBRAR
@@ -96,9 +93,9 @@ let carrito = [];
 let scanner = null;
 let bloqueado = false;
 
-/* ======================
-   📷 CÁMARA
-====================== */
+/* =========================
+   📷 CÁMARA TRASERA DIRECTA
+========================= */
 function toggleEscaner() {
     const c = document.getElementById('contenedor-lector');
 
@@ -115,28 +112,40 @@ function toggleEscaner() {
 }
 
 function iniciarEscaner() {
-    if (!scanner) {
-        scanner = new Html5QrcodeScanner("reader", {
-            fps: 10,
-            qrbox: 200,
-            facingMode: "environment"
-        });
-    }
 
-    scanner.render((text) => {
+    Html5Qrcode.getCameras().then(devices => {
 
-        if (bloqueado) return;
-        bloqueado = true;
+        let cameraId = devices.find(d =>
+            d.label.toLowerCase().includes("back") ||
+            d.label.toLowerCase().includes("trasera")
+        )?.id || devices[0].id;
 
-        buscarYAgregar(text);
+        scanner = new Html5Qrcode("reader");
 
-        setTimeout(() => bloqueado = false, 1500);
+        scanner.start(
+            cameraId,
+            {
+                fps: 12,
+                qrbox: 220
+            },
+            (text) => {
+
+                if (bloqueado) return;
+                bloqueado = true;
+
+                buscarYAgregar(text);
+                vibrar();
+
+                setTimeout(() => bloqueado = false, 1200);
+            }
+        );
+
     });
 }
 
-/* ======================
-   🔍 BUSCAR
-====================== */
+/* =========================
+   🔍 BUSCAR PRODUCTO
+========================= */
 function buscarYAgregar(codigo) {
     if (!codigo) return;
 
@@ -147,10 +156,11 @@ function buscarYAgregar(codigo) {
         });
 }
 
-/* ======================
-   ➕ CARRITO
-====================== */
+/* =========================
+   ➕ AGREGAR
+========================= */
 function agregar(p) {
+
     let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
     if (ex) ex.cantidad++;
@@ -164,17 +174,19 @@ function agregar(p) {
     render();
 }
 
-/* ======================
-   🔄 RENDER
-====================== */
+/* =========================
+   🔄 RENDER (CON + y -)
+========================= */
 function render() {
-    let total = 0;
-    let items = 0;
-    let lista = document.getElementById('listaVenta');
 
+    let lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
 
+    let total = 0;
+    let items = 0;
+
     carrito.forEach((p, i) => {
+
         let sub = p.precio * p.cantidad;
         total += sub;
         items += p.cantidad;
@@ -182,7 +194,13 @@ function render() {
         lista.innerHTML += `
         <tr>
             <td>${p.nombre}</td>
-            <td>${p.cantidad}</td>
+
+            <td class="text-center">
+                <button onclick="menos(${i})">-</button>
+                ${p.cantidad}
+                <button onclick="mas(${i})">+</button>
+            </td>
+
             <td>$${p.precio}</td>
             <td>$${sub.toFixed(2)}</td>
             <td><button onclick="del(${i})">X</button></td>
@@ -193,18 +211,30 @@ function render() {
     document.getElementById('conteoArticulos').innerText = items;
 }
 
-/* ======================
-   ❌ ELIMINAR
-====================== */
-function del(i) {
+/* =========================
+   ➕ ➖ CANTIDAD
+========================= */
+function mas(i){
+    carrito[i].cantidad++;
+    render();
+}
+
+function menos(i){
+    carrito[i].cantidad--;
+    if (carrito[i].cantidad <= 0) carrito.splice(i,1);
+    render();
+}
+
+function del(i){
     carrito.splice(i,1);
     render();
 }
 
-/* ======================
+/* =========================
    💰 COBRAR
-====================== */
+========================= */
 function finalizarVenta() {
+
     if (carrito.length === 0) return;
 
     let pago = parseFloat(document.getElementById('inputPago').value);
@@ -229,9 +259,9 @@ function finalizarVenta() {
     });
 }
 
-/* ======================
+/* =========================
    ❌ CANCELAR
-====================== */
+========================= */
 function cancelarVenta() {
     carrito = [];
     render();
@@ -239,33 +269,32 @@ function cancelarVenta() {
     document.getElementById('cambioEntregado').innerText = "$0.00";
 }
 
-/* ======================
+/* =========================
    ⌨️ ENTER FIX ANDROID
-====================== */
+========================= */
 window.onload = function () {
 
     const input = document.getElementById('buscadorVentas');
 
-    function procesar() {
-        const codigo = input.value.trim();
-        if (!codigo) return;
-
-        buscarYAgregar(codigo);
-        input.value = '';
-    }
-
-    input.addEventListener('keydown', function(e){
+    input.addEventListener('keydown', (e)=>{
         if (e.key === 'Enter') {
             e.preventDefault();
-            procesar();
-        }
-    });
 
-    input.addEventListener('keyup', function(e){
-        if (e.key === 'Enter') procesar();
+            let codigo = input.value.trim();
+            if (!codigo) return;
+
+            buscarYAgregar(codigo);
+            input.value = '';
+        }
     });
 };
 
+/* =========================
+   🔊 VIBRACIÓN
+========================= */
+function vibrar(){
+    if (navigator.vibrate) navigator.vibrate(80);
+}
 </script>
 
 {% endblock %}
