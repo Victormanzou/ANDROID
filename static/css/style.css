@@ -241,3 +241,83 @@ tr {
 .dark-mode .dropdown-item:hover {
     background: #334155 !important;
 }
+/* =========================
+   🌙 DARK MODE GLOBAL FIX REAL
+========================= */
+
+.dark-mode {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+/* 🔥 mata fondos blancos de bootstrap */
+.dark-mode .bg-white,
+.dark-mode .bg-light,
+.dark-mode .card-body,
+.dark-mode .container,
+.dark-mode section {
+    background: transparent !important;
+}
+
+/* 🔥 tarjetas consistentes */
+.dark-mode .card {
+    background: #1e293b !important;
+    color: #f1f5f9 !important;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* 🔥 texto general (MUY IMPORTANTE) */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode p,
+.dark-mode span,
+.dark-mode div {
+    color: #f1f5f9 !important;
+}
+
+/* 🔥 texto gris bootstrap (tu problema principal) */
+.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+/* 🔥 tablas */
+.dark-mode table {
+    background: transparent !important;
+    color: #f1f5f9 !important;
+}
+
+.dark-mode td,
+.dark-mode th {
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+/* 🔥 inputs */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #334155 !important;
+}
+
+/* 🔥 placeholders */
+.dark-mode input::placeholder {
+    color: #64748b !important;
+}
+
+/* 🔥 dashboard cards tipo "Flujo de Ventas por Hora" */
+.dark-mode .shadow-sm,
+.dark-mode .shadow,
+.dark-mode .border {
+    box-shadow: none !important;
+}
+
+/* 🔥 fix charts/containers blancos */
+.dark-mode canvas,
+.dark-mode .chart-container {
+    background: transparent !important;
+}
