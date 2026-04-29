@@ -1,54 +1,100 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
 
-    <h3 class="mb-3">🛒 Punto de Venta</h3>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">
+                        <i class="bi bi-cart4 text-primary"></i> Punto de Venta
+                    </h4>
 
-    <!-- 📷 BOTÓN ESCANEAR -->
-    <button class="btn btn-success mb-3 w-100" onclick="abrirEscaner()">
-        📷 Escanear producto
-    </button>
+                    <button class="btn btn-primary" onclick="abrirEscaner()">
+                        <i class="bi bi-camera"></i> Escanear
+                    </button>
+                </div>
 
-    <!-- 🔍 INPUT -->
-    <input type="text" id="buscadorVentas" class="form-control mb-3" placeholder="Escanea o escribe código..." autofocus>
+                <!-- INPUT -->
+                <div class="input-group input-group-lg mb-4">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-upc-scan text-muted"></i>
+                    </span>
+                    <input type="text" id="buscadorVentas" class="form-control border-start-0" placeholder="Escanea o busca producto..." autofocus>
+                </div>
 
-    <!-- 🛒 TABLA -->
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Cant</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody id="listaVenta"></tbody>
-    </table>
+                <!-- TABLA -->
+                <div class="table-responsive" style="min-height: 400px;">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cant.</th>
+                                <th>Precio</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaVenta"></tbody>
+                    </table>
+                </div>
 
-    <!-- 💰 TOTAL -->
-    <h3>Total: $<span id="totalPagar">0.00</span></h3>
+            </div>
+        </div>
+    </div>
 
-    <!-- 💵 INPUT PAGO -->
-    <input type="number" id="inputPago" class="form-control mb-2" placeholder="Pago del cliente">
+    <!-- PANEL DERECHO -->
+    <div class="col-md-4">
 
-    <!-- 🔘 BOTONES -->
-    <button class="btn btn-success w-100 mb-2" onclick="finalizarVenta()">COBRAR</button>
-    <button class="btn btn-danger w-100 mb-2" onclick="cancelarVenta()">CANCELAR</button>
+        <div class="card shadow-sm border-0 bg-primary text-white mb-3">
+            <div class="card-body text-center py-4">
+                <h6 class="text-uppercase opacity-75">Total a Pagar</h6>
+                <h1 class="display-4 fw-bold mb-0" id="totalPagar">$0.00</h1>
+            </div>
+        </div>
 
-    <!-- 💸 CAMBIO -->
-    <h4>Cambio: <span id="cambioEntregado">$0.00</span></h4>
+        <div class="card shadow-sm border-0 p-3">
 
-    <!-- 📢 MENSAJES -->
-    <div id="mensaje" class="alert mt-3" style="display:none;"></div>
+            <!-- INPUT PAGO -->
+            <input type="number" id="inputPago" class="form-control mb-3" placeholder="Pago del cliente">
 
+            <button class="btn btn-success btn-lg w-100 mb-2 fw-bold" onclick="finalizarVenta()">
+                <i class="bi bi-cash-stack"></i> COBRAR
+            </button>
+
+            <button class="btn btn-outline-danger w-100 mb-2" onclick="cancelarVenta()">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+
+            <hr>
+
+            <div class="d-flex justify-content-between mb-2">
+                <span>Artículos:</span>
+                <span id="conteoArticulos">0</span>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <span>Fecha:</span>
+                <span>{{ now.strftime('%d/%m/%Y') }}</span>
+            </div>
+        </div>
+
+        <div class="alert alert-secondary text-center mt-3">
+            <small>Cambio:</small>
+            <h4 id="cambioEntregado">$0.00</h4>
+        </div>
+
+        <!-- MENSAJES -->
+        <div id="mensaje" class="alert mt-3" style="display:none;"></div>
+
+    </div>
 </div>
 
 <script>
 let carrito = [];
 
-// 📷 ESCÁNER (ANDROID)
+// 📷 ESCÁNER
 function abrirEscaner() {
     if (window.Android && Android.iniciarEscaner) {
         Android.iniciarEscaner();
@@ -59,18 +105,16 @@ function abrirEscaner() {
 
 // 🔍 BUSCAR
 function buscarYAgregar(codigo) {
-    if (!codigo) return;
-
     fetch(`/buscar_producto/${codigo}`)
     .then(res => res.json())
     .then(data => {
         if (data.success) {
             agregarAlCarrito(data.producto);
         } else {
-            mostrarMensaje("❌ Producto no encontrado", "danger");
+            mostrarMensaje("Producto no encontrado", "danger");
         }
     })
-    .catch(() => mostrarMensaje("❌ Error conexión", "danger"));
+    .catch(() => mostrarMensaje("Error conexión", "danger"));
 }
 
 // ➕ AGREGAR
@@ -91,28 +135,33 @@ function agregarAlCarrito(producto) {
     actualizarTabla();
 }
 
-// 🔄 ACTUALIZAR UI
+// 🔄 ACTUALIZAR
 function actualizarTabla() {
     const lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
 
     let total = 0;
+    let items = 0;
 
     carrito.forEach((p, i) => {
         let subtotal = p.precio * p.cantidad;
         total += subtotal;
+        items += p.cantidad;
 
         lista.innerHTML += `
         <tr>
             <td>${p.nombre}</td>
-            <td>${p.cantidad}</td>
+            <td class="text-center">${p.cantidad}</td>
             <td>$${p.precio}</td>
             <td>$${subtotal.toFixed(2)}</td>
-            <td><button class="btn btn-sm btn-danger" onclick="eliminarItem(${i})">X</button></td>
+            <td>
+                <button class="btn btn-sm btn-danger" onclick="eliminarItem(${i})">X</button>
+            </td>
         </tr>`;
     });
 
-    document.getElementById('totalPagar').innerText = total.toFixed(2);
+    document.getElementById('totalPagar').innerText = `$${total.toFixed(2)}`;
+    document.getElementById('conteoArticulos').innerText = items;
 }
 
 // ❌ ELIMINAR
@@ -124,15 +173,15 @@ function eliminarItem(i) {
 // 💰 COBRAR
 function finalizarVenta() {
     if (carrito.length === 0) {
-        mostrarMensaje("⚠️ Carrito vacío", "warning");
+        mostrarMensaje("Carrito vacío", "warning");
         return;
     }
 
     let pago = parseFloat(document.getElementById('inputPago').value);
-    let total = parseFloat(document.getElementById('totalPagar').innerText);
+    let total = parseFloat(document.getElementById('totalPagar').innerText.replace('$',''));
 
     if (isNaN(pago) || pago < total) {
-        mostrarMensaje("❌ Pago insuficiente", "danger");
+        mostrarMensaje("Pago insuficiente", "danger");
         return;
     }
 
@@ -148,50 +197,32 @@ function finalizarVenta() {
 
             document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
 
-            mostrarTicket(cambio);
+            mostrarMensaje("✅ Venta realizada", "success");
 
             carrito = [];
             actualizarTabla();
             document.getElementById('inputPago').value = '';
-        } else {
-            mostrarMensaje("❌ Error en venta", "danger");
         }
-    })
-    .catch(() => mostrarMensaje("❌ Error conexión", "danger"));
+    });
 }
 
 // ❌ CANCELAR
 function cancelarVenta() {
     carrito = [];
     actualizarTabla();
-
     document.getElementById('cambioEntregado').innerText = "$0.00";
     document.getElementById('inputPago').value = '';
-
     mostrarMensaje("Venta cancelada", "secondary");
 }
 
-// 🧾 TICKET
-function mostrarTicket(cambio) {
-    let total = document.getElementById('totalPagar').innerText;
-
-    let html = `
-        🧾 Venta realizada<br>
-        Total: $${total}<br>
-        Cambio: $${cambio.toFixed(2)}
-    `;
-
-    mostrarMensaje(html, "success");
-}
-
-// 📢 MENSAJES VISUALES
+// 📢 MENSAJES
 function mostrarMensaje(texto, tipo) {
     const div = document.getElementById('mensaje');
     div.innerHTML = texto;
     div.className = `alert alert-${tipo}`;
     div.style.display = 'block';
 
-    setTimeout(() => div.style.display = 'none', 3000);
+    setTimeout(() => div.style.display = 'none', 2500);
 }
 
 // ⌨️ ENTER
