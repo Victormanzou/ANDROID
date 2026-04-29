@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime
 import os
 
+from database.conexion import obtener_conexion
 from models import Producto, Venta, Merma, Compra, Categoria
 
 app = Flask(__name__)
@@ -12,13 +13,37 @@ app.jinja_env.auto_reload = True
 
 
 # =========================
+# INIT DB (IMPORTANTE PARA CELULAR / RAILWAY)
+# =========================
+@app.route('/init-db')
+def init_db():
+    db = obtener_conexion()
+
+    db.execute("""
+    CREATE TABLE IF NOT EXISTS compras (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo_barras TEXT NOT NULL,
+        cantidad INTEGER NOT NULL,
+        costo_unitario REAL NOT NULL,
+        total REAL NOT NULL,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    db.commit()
+    db.close()
+
+    return "Base de datos lista ✔"
+
+
+# =========================
 # DASHBOARD
 # =========================
 @app.route('/')
 def index():
-    productos = Producto.obtener_todos() or []
-
     try:
+        productos = Producto.obtener_todos() or []
+
         stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
         productos_vencidos = [p for p in productos if p['fecha_vencimiento']]
 
@@ -111,7 +136,7 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS (🔥 FIX FINAL)
+# COMPRAS
 # =========================
 @app.route('/compras')
 def compras():
@@ -133,10 +158,9 @@ def agregar_compra():
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        # 🔥 1. registrar compra correctamente
+        # registrar compra + stock
         Compra.registrar_entrada(codigo, cantidad, costo)
 
-        # 🔥 2. actualizar stock (usa codigo_barras)
         Producto.aumentar_stock(codigo, cantidad)
 
         return redirect(url_for('compras'))
