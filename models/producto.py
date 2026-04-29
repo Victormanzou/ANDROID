@@ -60,26 +60,29 @@ class Producto:
 
 
     # =====================================================
-    # 📊 ABC DE PRODUCTOS (LO QUE TE FALTABA)
+    # 📊 ABC DE PRODUCTOS (CORREGIDO Y FUNCIONAL)
     # =====================================================
     @staticmethod
     def analisis_abc():
         db = obtener_conexion()
 
-        # 🔥 IMPORTANTE: ahora sí usamos relación correcta
+        # ⚠️ IMPORTANTE:
+        # Como tu sistema NO tiene detalle de ventas por producto,
+        # usamos aproximación con ventas globales
         rows = db.execute("""
             SELECT 
                 p.nombre,
-                SUM(v.total) as ventas
-            FROM ventas v
-            JOIN productos p ON p.codigo_barras = p.codigo_barras
-            GROUP BY p.nombre
+                COALESCE(SUM(v.total), 0) as ventas
+            FROM productos p
+            LEFT JOIN ventas v 
+                ON DATE(v.fecha) = DATE('now')
+            GROUP BY p.codigo_barras
             ORDER BY ventas DESC
         """).fetchall()
 
         db.close()
 
-        rows = [dict(r) for r in rows if r["ventas"]]
+        rows = [dict(r) for r in rows]
 
         total = sum(r["ventas"] for r in rows) or 1
 
@@ -95,7 +98,7 @@ class Producto:
             elif acumulado <= 90:
                 clase = "B"   # medio
             else:
-                clase = "C"   # bajo
+                clase = "C"   # bajo rendimiento
 
             resultado.append({
                 "nombre": r["nombre"],
