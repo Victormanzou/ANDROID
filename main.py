@@ -12,7 +12,7 @@ app.jinja_env.auto_reload = True
 
 
 # =========================
-# DASHBOARD (FIXED)
+# DASHBOARD
 # =========================
 @app.route('/')
 def index():
@@ -29,11 +29,11 @@ def index():
             if p['fecha_vencimiento']
         ]
 
-        resumen_hoy = Venta.obtener_resumen_hoy() or (0, 0)
+        resumen_hoy = Venta.obtener_resumen_hoy() or {'total': 0, 'utilidad': 0}
 
         metricas = {
-            'ventas_hoy': resumen_hoy['total'] if resumen_hoy else 0.0,
-            'utilidad_hoy': resumen_hoy['utilidad'] if resumen_hoy else 0.0,
+            'ventas_hoy': resumen_hoy['total'],
+            'utilidad_hoy': resumen_hoy['utilidad'],
             'conteo_stock_bajo': len(stock_bajo),
             'mermas_mes': 50.00
         }
@@ -53,7 +53,7 @@ def index():
             metricas=metricas,
             alertas=alertas,
             productos_vencidos=productos_vencidos,
-            finanzas={},   # 🔥 IMPORTANTE FIX
+            finanzas={},
             reporte_diario={},
             reporte_semanal={}
         )
@@ -100,10 +100,7 @@ def buscar_producto(codigo):
     producto = Producto.buscar_por_codigo(codigo)
 
     if producto:
-        return jsonify({
-            'success': True,
-            'producto': producto
-        })
+        return jsonify({'success': True, 'producto': producto})
 
     return jsonify({'success': False})
 
@@ -124,7 +121,7 @@ def finalizar_venta():
 
 
 # =========================
-# COMPRAS (SIN TABLA compras)
+# COMPRAS (FIX REAL)
 # =========================
 @app.route('/compras')
 def compras():
@@ -136,11 +133,10 @@ def compras():
 def agregar_compra():
     try:
         codigo = request.form.get('id_producto')
-        proveedor = request.form.get('proveedor')
         cantidad = int(request.form.get('cantidad'))
         costo = float(request.form.get('costo_unitario'))
 
-        # 🔥 SOLO ESTO ES SEGURO (sin tabla compras)
+        # 🔥 SOLO ACTUALIZA STOCK (SIN TABLA compras)
         Compra.registrar_entrada(codigo, cantidad, costo)
 
         return redirect(url_for('compras'))
