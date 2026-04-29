@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
 <div class="row">
     <div class="col-md-8">
         <div class="card shadow-sm border-0 mb-4">
@@ -11,31 +12,46 @@
                         <i class="bi bi-cart4 text-primary"></i> Punto de Venta
                     </h4>
 
-                    <button class="btn btn-primary" onclick="abrirEscaner()">
-                        <i class="bi bi-camera"></i> Escanear
+                    <button class="btn btn-primary" onclick="toggleEscaner()">
+                        <i class="bi bi-camera"></i> Activar Escáner
                     </button>
                 </div>
 
-                <!-- INPUT PRODUCTO -->
+                <!-- CÁMARA -->
+                <div id="contenedor-lector" class="mb-3"
+                     style="display:none; border:2px solid #0d6efd; border-radius:10px; padding:10px;">
+                    <div id="reader" style="width:100%;"></div>
+                    <button class="btn btn-sm btn-danger w-100 mt-2" onclick="toggleEscaner()">
+                        Detener Cámara
+                    </button>
+                </div>
+
+                <!-- INPUT -->
                 <div class="input-group input-group-lg mb-4">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="bi bi-upc-scan text-muted"></i>
                     </span>
-                    <input type="text" id="buscadorVentas" class="form-control border-start-0"
-                           placeholder="Escanea o busca producto..." autofocus>
+
+                    <input type="text"
+                           id="buscadorVentas"
+                           class="form-control border-start-0"
+                           placeholder="Escanea o busca producto..."
+                           inputmode="text"
+                           autocomplete="off"
+                           autofocus>
                 </div>
 
                 <!-- TABLA -->
                 <div class="table-responsive" style="min-height: 400px;">
                     <table class="table align-middle">
                         <thead class="table-light">
-                            <tr>
-                                <th>Producto</th>
-                                <th class="text-center">Cant.</th>
-                                <th>Precio</th>
-                                <th>Subtotal</th>
-                                <th></th>
-                            </tr>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th>Precio</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
                         </thead>
                         <tbody id="listaVenta"></tbody>
                     </table>
@@ -50,105 +66,120 @@
 
         <div class="card shadow-sm border-0 bg-primary text-white mb-3">
             <div class="card-body text-center py-4">
-                <h6 class="text-uppercase opacity-75">Total a Pagar</h6>
-                <h1 class="display-4 fw-bold mb-0" id="totalPagar">$0.00</h1>
+                <h6>Total a Pagar</h6>
+                <h1 id="totalPagar">$0.00</h1>
             </div>
         </div>
 
         <div class="card shadow-sm border-0 p-3">
 
-            <!-- PAGO -->
-            <input type="number" id="inputPago" class="form-control mb-3"
-                   placeholder="Pago del cliente">
-
-            <button class="btn btn-success btn-lg w-100 mb-2 fw-bold" onclick="finalizarVenta()">
-                <i class="bi bi-cash-stack"></i> COBRAR
+            <button class="btn btn-success w-100 mb-2" onclick="finalizarVenta()">
+                COBRAR
             </button>
 
-            <button class="btn btn-outline-danger w-100 mb-2" onclick="cancelarVenta()">
-                <i class="bi bi-x-circle"></i> Cancelar
+            <button class="btn btn-danger w-100" onclick="cancelarVenta()">
+                CANCELAR
             </button>
 
             <hr>
 
-            <div class="d-flex justify-content-between mb-2">
+            <div class="d-flex justify-content-between">
                 <span>Artículos:</span>
                 <span id="conteoArticulos">0</span>
             </div>
 
-            <div class="d-flex justify-content-between">
-                <span>Fecha:</span>
-                <span>{{ now.strftime('%d/%m/%Y') }}</span>
-            </div>
         </div>
 
         <div class="alert alert-secondary text-center mt-3">
-            <small>Cambio:</small>
-            <h4 id="cambioEntregado">$0.00</h4>
+            Cambio: <h4 id="cambioEntregado">$0.00</h4>
         </div>
-
-        <div id="mensaje" class="alert mt-3" style="display:none;"></div>
 
     </div>
 </div>
 
+<script src="https://unpkg.com/html5-qrcode"></script>
+
 <script>
 let carrito = [];
+let html5QrcodeScanner = null;
 
-/* 📷 ESCÁNER */
-function abrirEscaner() {
-    if (window.Android && Android.iniciarEscaner) {
-        Android.iniciarEscaner();
+/* =========================
+   📷 CÁMARA
+========================= */
+function toggleEscaner() {
+    const contenedor = document.getElementById('contenedor-lector');
+
+    if (contenedor.style.display === 'none') {
+        contenedor.style.display = 'block';
+        iniciarEscaner();
     } else {
-        mostrarMensaje("⚠️ Cámara solo en app", "warning");
+        contenedor.style.display = 'none';
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear();
+            html5QrcodeScanner = null;
+        }
     }
 }
 
-/* 🔍 BUSCAR PRODUCTO */
+function iniciarEscaner() {
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", {
+            fps: 10,
+            qrbox: 200
+        });
+    }
+
+    html5QrcodeScanner.render((text) => {
+        buscarYAgregar(text);
+        vibrar();
+    });
+}
+
+/* =========================
+   🔍 BUSCAR
+========================= */
 function buscarYAgregar(codigo) {
     if (!codigo) return;
 
     fetch(`/buscar_producto/${codigo}`)
-        .then(res => res.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
                 agregarAlCarrito(data.producto);
-            } else {
-                mostrarMensaje("Producto no encontrado", "danger");
             }
-        })
-        .catch(() => mostrarMensaje("Error de conexión", "danger"));
+        });
 }
 
-/* ➕ AGREGAR */
-function agregarAlCarrito(producto) {
-    const existente = carrito.find(p => p.codigo_barras === producto.codigo_barras);
+/* =========================
+   ➕ CARRITO
+========================= */
+function agregarAlCarrito(p) {
+    let ex = carrito.find(x => x.codigo_barras === p.codigo_barras);
 
-    if (existente) {
-        existente.cantidad++;
-    } else {
-        carrito.push({
-            codigo_barras: producto.codigo_barras,
-            nombre: producto.nombre,
-            precio: producto.precio_venta,
-            cantidad: 1
-        });
-    }
+    if (ex) ex.cantidad++;
+    else carrito.push({
+        codigo_barras: p.codigo_barras,
+        nombre: p.nombre,
+        precio: p.precio_venta,
+        cantidad: 1
+    });
 
     actualizarTabla();
 }
 
-/* 🔄 ACTUALIZAR TABLA */
+/* =========================
+   🔄 TABLA
+========================= */
 function actualizarTabla() {
-    const lista = document.getElementById('listaVenta');
+    let lista = document.getElementById('listaVenta');
     lista.innerHTML = '';
 
     let total = 0;
     let items = 0;
 
     carrito.forEach((p, i) => {
-        let subtotal = p.precio * p.cantidad;
-        total += subtotal;
+        let sub = p.precio * p.cantidad;
+        total += sub;
         items += p.cantidad;
 
         lista.innerHTML += `
@@ -156,10 +187,8 @@ function actualizarTabla() {
             <td>${p.nombre}</td>
             <td class="text-center">${p.cantidad}</td>
             <td>$${p.precio}</td>
-            <td>$${subtotal.toFixed(2)}</td>
-            <td>
-                <button class="btn btn-sm btn-danger" onclick="eliminarItem(${i})">X</button>
-            </td>
+            <td>$${sub.toFixed(2)}</td>
+            <td><button onclick="eliminar(${i})">X</button></td>
         </tr>`;
     });
 
@@ -167,90 +196,80 @@ function actualizarTabla() {
     document.getElementById('conteoArticulos').innerText = items;
 }
 
-/* ❌ ELIMINAR */
-function eliminarItem(i) {
+/* =========================
+   ❌ ELIMINAR
+========================= */
+function eliminar(i) {
     carrito.splice(i, 1);
     actualizarTabla();
 }
 
-/* 💰 COBRAR */
+/* =========================
+   💰 COBRAR
+========================= */
 function finalizarVenta() {
-    if (carrito.length === 0) {
-        mostrarMensaje("Carrito vacío", "warning");
-        return;
-    }
+    if (carrito.length === 0) return;
 
-    let pago = parseFloat(document.getElementById('inputPago').value);
+    let pago = prompt("Pago:");
     let total = parseFloat(document.getElementById('totalPagar').innerText.replace('$',''));
-
-    if (isNaN(pago) || pago < total) {
-        mostrarMensaje("Pago insuficiente", "danger");
-        return;
-    }
 
     fetch('/finalizar_venta', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ carrito })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
+    }).then(r => r.json()).then(() => {
+        document.getElementById('cambioEntregado').innerText =
+            `$${(pago - total).toFixed(2)}`;
 
-            let cambio = pago - total;
-
-            document.getElementById('cambioEntregado').innerText = `$${cambio.toFixed(2)}`;
-
-            mostrarMensaje("Venta realizada", "success");
-
-            carrito = [];
-            actualizarTabla();
-
-            document.getElementById('inputPago').value = '';
-
-            // 🔥 regresar foco al input principal
-            document.getElementById('buscadorVentas').focus();
-        }
+        carrito = [];
+        actualizarTabla();
     });
 }
 
-/* ❌ CANCELAR */
+/* =========================
+   ❌ CANCELAR
+========================= */
 function cancelarVenta() {
     carrito = [];
     actualizarTabla();
-
     document.getElementById('cambioEntregado').innerText = "$0.00";
-    document.getElementById('inputPago').value = '';
-
-    mostrarMensaje("Venta cancelada", "secondary");
-
-    document.getElementById('buscadorVentas').focus();
 }
 
-/* 📢 MENSAJES */
-function mostrarMensaje(texto, tipo) {
-    const div = document.getElementById('mensaje');
-    div.innerHTML = texto;
-    div.className = `alert alert-${tipo}`;
-    div.style.display = 'block';
-
-    setTimeout(() => div.style.display = 'none', 2000);
-}
-
-/* ⌨️ ENTER FIX ANDROID */
+/* =========================
+   ⌨️ FIX ANDROID TECLADO
+========================= */
 window.onload = function () {
 
     const input = document.getElementById('buscadorVentas');
 
-    input.addEventListener('keydown', function (e) {
+    function procesar() {
+        const codigo = input.value.trim();
+        if (!codigo) return;
+
+        buscarYAgregar(codigo);
+        input.value = '';
+    }
+
+    // ENTER físico
+    input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            e.preventDefault(); // 🔥 evita salto al input de pago
-            buscarYAgregar(this.value.trim());
-            this.value = '';
+            e.preventDefault();
+            procesar();
         }
     });
 
+    // ANDROID "DONE / NEXT"
+    input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') procesar();
+    });
+
+    // fallback
+    input.addEventListener('change', procesar);
 };
+
+function vibrar() {
+    if (navigator.vibrate) navigator.vibrate(80);
+}
 </script>
 
 {% endblock %}
