@@ -44,7 +44,6 @@
 <!-- ================= HOY ================= -->
 <div class="tab-pane fade show active" id="hoy">
 
-    <!-- MÉTRICAS -->
     <div class="row g-3 mb-4">
 
         <div class="col-md-3">
@@ -77,7 +76,6 @@
 
     </div>
 
-    <!-- GRÁFICOS -->
     <div class="row g-4">
 
         <div class="col-lg-8">
@@ -109,7 +107,6 @@
 
     </div>
 
-    <!-- VENTAS RECIENTES -->
     <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-white fw-bold">
             🧾 Ventas Recientes
@@ -150,7 +147,6 @@
 
     <div class="row">
 
-        <!-- GRÁFICA SEMANA -->
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
@@ -159,7 +155,6 @@
             </div>
         </div>
 
-        <!-- 🔥 ABC PRODUCTOS (LO QUE TE FALTABA) -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
@@ -167,8 +162,9 @@
                 </div>
 
                 <div class="card-body">
-                    {% if productos_abc %}
-                        {% for p in productos_abc %}
+
+                    {% if abc_productos %}
+                        {% for p in abc_productos %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span>{{ p.nombre }}</span>
                                 <span class="badge 
@@ -182,6 +178,7 @@
                     {% else %}
                         <p class="text-muted">Sin datos ABC</p>
                     {% endif %}
+
                 </div>
             </div>
         </div>
@@ -218,15 +215,11 @@
     </div>
 </div>
 
-<!-- CHARTS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // ===============================
-    // GRÁFICA TIEMPO REAL
-    // ===============================
     let chartHoras;
 
     async function cargarGrafica() {
@@ -243,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 chartHoras = new Chart(document.getElementById('graficaHoras'), {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels,
                         datasets: [{
                             label: 'Ventas por hora',
                             data: valores,
@@ -259,16 +252,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
         } catch (e) {
-            console.log("Sin API de horas aún");
+            console.log("API no lista aún");
         }
     }
 
     cargarGrafica();
     setInterval(cargarGrafica, 8000);
 
-    // ===============================
-    // SEMANA (FALLBACK SIMPLE)
-    // ===============================
     new Chart(document.getElementById('graficaVentas'), {
         type: 'line',
         data: {
