@@ -56,28 +56,34 @@
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Ventas</h6>
-                <h3>${{ "{:,.2f}".format(metricas.ventas_hoy) }}</h3>
+                <h3>
+                    ${{ metricas.ventas_hoy | default(0) | float | round(2) }}
+                </h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Utilidad</h6>
-                <h3 class="text-success">${{ "{:,.2f}".format(metricas.utilidad_hoy) }}</h3>
+                <h3 class="text-success">
+                    ${{ metricas.utilidad_hoy | default(0) | float | round(2) }}
+                </h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Stock Bajo</h6>
-                <h3>{{ metricas.conteo_stock_bajo }}</h3>
+                <h3>{{ metricas.conteo_stock_bajo | default(0) }}</h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Mermas</h6>
-                <h3 class="text-danger">${{ "{:,.2f}".format(metricas.mermas_mes) }}</h3>
+                <h3 class="text-danger">
+                    ${{ metricas.mermas_mes | default(0) | float | round(2) }}
+                </h3>
             </div>
         </div>
 
@@ -85,7 +91,6 @@
 
     <div class="row g-4">
 
-        <!-- GRAFICA HORAS -->
         <div class="col-lg-8">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
@@ -97,7 +102,6 @@
             </div>
         </div>
 
-        <!-- ALERTAS -->
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 bg-light">
                 <div class="card-body">
@@ -108,6 +112,8 @@
                             <span class="badge bg-{{ alerta.color }}">{{ alerta.tipo }}</span>
                             <small>{{ alerta.mensaje }}</small>
                         </div>
+                    {% else %}
+                        <p class="text-muted">Sin alertas</p>
                     {% endfor %}
 
                 </div>
@@ -137,8 +143,8 @@
                     {% for v in ventas_recientes %}
                     <tr>
                         <td>{{ v.fecha }}</td>
-                        <td>${{ "{:,.2f}".format(v.total) }}</td>
-                        <td class="text-success">${{ "{:,.2f}".format(v.utilidad) }}</td>
+                        <td>${{ v.total | default(0) | float | round(2) }}</td>
+                        <td class="text-success">${{ v.utilidad | default(0) | float | round(2) }}</td>
                     </tr>
                     {% else %}
                     <tr>
@@ -166,7 +172,6 @@
             </div>
         </div>
 
-        <!-- ABC -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-bold">
@@ -207,7 +212,6 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="m-0">💰 Salud Financiera</h5>
 
-            <!-- BOTÓN A FINANZAS -->
             <a href="{{ url_for('finanzas') }}" class="btn btn-primary btn-sm">
                 Ir a Finanzas →
             </a>
@@ -215,19 +219,25 @@
 
         <div class="d-flex justify-content-between">
             <span>Ingresos</span>
-            <strong class="text-success">${{ ingresos or 0 }}</strong>
+            <strong class="text-success">
+                ${{ ingresos | default(0) | float | round(2) }}
+            </strong>
         </div>
 
         <div class="d-flex justify-content-between">
             <span>Gastos</span>
-            <strong class="text-danger">${{ gastos or 0 }}</strong>
+            <strong class="text-danger">
+                ${{ gastos | default(0) | float | round(2) }}
+            </strong>
         </div>
 
         <hr>
 
         <div class="d-flex justify-content-between">
             <span>Utilidad</span>
-            <strong>${{ utilidad or 0 }}</strong>
+            <strong>
+                ${{ utilidad | default(0) | float | round(2) }}
+            </strong>
         </div>
 
     </div>
@@ -248,70 +258,13 @@
             <div class="modal-body">
                 {% for p in productos_vencidos %}
                     <div>{{ p.nombre }} - {{ p.fecha_vencimiento }}</div>
+                {% else %}
+                    <p class="text-muted">Sin productos próximos a vencer</p>
                 {% endfor %}
             </div>
 
         </div>
     </div>
 </div>
-
-<!-- CHARTS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-
-    let chartHoras;
-
-    async function cargarGrafica() {
-
-        try {
-            const res = await fetch('/api/ventas_por_hora');
-            const data = await res.json();
-
-            const labels = Object.keys(data).map(h => h + ':00');
-            const valores = Object.values(data);
-
-            if (!chartHoras) {
-                chartHoras = new Chart(document.getElementById('graficaHoras'), {
-                    type: 'bar',
-                    data: {
-                        labels,
-                        datasets: [{
-                            label: 'Ventas por hora',
-                            data: valores,
-                            backgroundColor: 'rgba(99,102,241,0.7)'
-                        }]
-                    }
-                });
-            } else {
-                chartHoras.data.labels = labels;
-                chartHoras.data.datasets[0].data = valores;
-                chartHoras.update();
-            }
-
-        } catch (e) {
-            console.log("API no lista aún");
-        }
-    }
-
-    cargarGrafica();
-    setInterval(cargarGrafica, 8000);
-
-    new Chart(document.getElementById('graficaVentas'), {
-        type: 'line',
-        data: {
-            labels: ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'],
-            datasets: [{
-                label: 'Ventas',
-                data: {{ reporte_semanal | tojson if reporte_semanal else [0,0,0,0,0,0,0] }},
-                borderColor: '#6366f1',
-                fill: true
-            }]
-        }
-    });
-
-});
-</script>
 
 {% endblock %}
