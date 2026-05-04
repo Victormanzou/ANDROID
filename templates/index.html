@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 
 {% block content %}
@@ -10,13 +9,19 @@
     </div>
 
     <div class="col-md-4 text-md-end mt-3 mt-md-0">
-        <button type="button" class="btn btn-info border-0 shadow-sm py-2 px-3 text-white position-relative"
-            data-bs-toggle="modal" data-bs-target="#modalCaducidad">
+        <button type="button"
+            class="btn btn-info border-0 shadow-sm py-2 px-3 text-white position-relative"
+            data-bs-toggle="modal"
+            data-bs-target="#modalCaducidad">
 
             <i class="bi bi-calendar-event-fill me-2"></i>
-            <strong>{{ productos_vencidos|length if productos_vencidos else "0" }}</strong> productos vencen pronto
-            <strong>{{ productos_vencidos|length if productos_vencidos else 0 }}</strong>
+
+            <strong>
+                {{ productos_vencidos|length if productos_vencidos else 0 }}
+            </strong>
+
             productos vencen pronto
+
             <span class="badge-pulse"></span>
 
         </button>
@@ -25,21 +30,31 @@
 
 <!-- NAV -->
 <ul class="nav nav-pills nav-fill mb-4 bg-white shadow-sm p-1 rounded-pill">
+
     <li class="nav-item">
-        <button class="nav-link active rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#hoy">
+        <button class="nav-link active rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#hoy">
             Operación Hoy
         </button>
     </li>
+
     <li class="nav-item">
-        <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#semana">
+        <button class="nav-link rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#semana">
             Análisis Semanal
         </button>
     </li>
+
     <li class="nav-item">
-        <button class="nav-link rounded-pill fw-bold" data-bs-toggle="pill" data-bs-target="#finanzas">
+        <button class="nav-link rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#finanzas">
             Salud Financiera
         </button>
     </li>
+
 </ul>
 
 <div class="tab-content">
@@ -52,28 +67,40 @@
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Ventas</h6>
-                <h3>${{ "{:,.2f}".format(metricas.ventas_hoy) }}</h3>
+
+                <h3>
+                    ${{ "{:,.2f}".format(metricas.ventas_hoy if metricas.ventas_hoy else 0) }}
+                </h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Utilidad</h6>
-                <h3 class="text-success">${{ "{:,.2f}".format(metricas.utilidad_hoy) }}</h3>
+
+                <h3 class="text-success">
+                    ${{ "{:,.2f}".format(metricas.utilidad_hoy if metricas.utilidad_hoy else 0) }}
+                </h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Stock Bajo</h6>
-                <h3>{{ metricas.conteo_stock_bajo }}</h3>
+
+                <h3>
+                    {{ metricas.conteo_stock_bajo if metricas.conteo_stock_bajo else 0 }}
+                </h3>
             </div>
         </div>
 
         <div class="col-md-3">
             <div class="card border-0 shadow-sm p-3">
                 <h6 class="text-muted">Mermas</h6>
-                <h3 class="text-danger">${{ "{:,.2f}".format(metricas.mermas_mes) }}</h3>
+
+                <h3 class="text-danger">
+                    ${{ "{:,.2f}".format(metricas.mermas_mes if metricas.mermas_mes else 0) }}
+                </h3>
             </div>
         </div>
 
@@ -81,67 +108,121 @@
 
     <div class="row g-4">
 
+        <!-- GRAFICA -->
         <div class="col-lg-8">
             <div class="card shadow-sm border-0">
+
                 <div class="card-header bg-white fw-bold">
-                    Flujo de Ventas por Hora (Tiempo Real)
+                    Flujo de Ventas por Hora
                 </div>
+
                 <div class="card-body">
                     <canvas id="graficaHoras" height="280"></canvas>
                 </div>
+
             </div>
         </div>
 
+        <!-- ALERTAS -->
         <div class="col-lg-4">
+
             <div class="card shadow-sm border-0 bg-light">
+
                 <div class="card-body">
+
                     <h5>Alertas</h5>
 
-                    {% for alerta in alertas %}
-                        <div class="mb-2">
-                            <span class="badge bg-{{ alerta.color }}">{{ alerta.tipo }}</span>
-                            <small>{{ alerta.mensaje }}</small>
-                        </div>
-                    {% endfor %}
+                    {% if alertas %}
+
+                        {% for alerta in alertas %}
+
+                            <div class="mb-2">
+
+                                <span class="badge bg-{{ alerta.color }}">
+                                    {{ alerta.tipo }}
+                                </span>
+
+                                <small>{{ alerta.mensaje }}</small>
+
+                            </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p class="text-muted">
+                            Sin alertas
+                        </p>
+
+                    {% endif %}
 
                 </div>
+
             </div>
+
         </div>
 
     </div>
 
     <!-- VENTAS -->
     <div class="card shadow-sm border-0 mt-4">
+
         <div class="card-header bg-white fw-bold">
             🧾 Ventas Recientes
         </div>
 
         <div class="card-body p-0">
+
             <table class="table table-hover text-center mb-0">
+
                 <thead class="table-light">
+
                     <tr>
                         <th>Fecha</th>
                         <th>Total</th>
                         <th>Utilidad</th>
                     </tr>
+
                 </thead>
 
                 <tbody>
-                    {% for v in ventas_recientes %}
-                    <tr>
-                        <td>{{ v.fecha }}</td>
-                        <td>${{ "{:,.2f}".format(v.total) }}</td>
-                        <td class="text-success">${{ "{:,.2f}".format(v.utilidad) }}</td>
-                    </tr>
+
+                    {% if ventas_recientes %}
+
+                        {% for v in ventas_recientes %}
+
+                        <tr>
+
+                            <td>{{ v.fecha }}</td>
+
+                            <td>
+                                ${{ "{:,.2f}".format(v.total if v.total else 0) }}
+                            </td>
+
+                            <td class="text-success">
+                                ${{ "{:,.2f}".format(v.utilidad if v.utilidad else 0) }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
                     {% else %}
-                    <tr>
-                        <td colspan="3" class="text-muted py-3">Sin ventas</td>
-                    </tr>
-                    {% endfor %}
+
+                        <tr>
+                            <td colspan="3" class="text-muted py-3">
+                                Sin ventas
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
                 </tbody>
 
             </table>
+
         </div>
+
     </div>
 
 </div>
@@ -151,44 +232,66 @@
 
     <div class="row">
 
+        <!-- GRAFICA -->
         <div class="col-md-8">
+
             <div class="card">
+
                 <div class="card-body">
                     <canvas id="graficaVentas" height="300"></canvas>
                 </div>
+
             </div>
+
         </div>
 
-        <!-- 🔥 ABC BIEN PROTEGIDO -->
         <!-- ABC -->
         <div class="col-md-4">
+
             <div class="card shadow-sm border-0">
+
                 <div class="card-header bg-white fw-bold">
                     📦 Clasificación ABC
                 </div>
 
                 <div class="card-body">
 
-                    {% if abc_productos and abc_productos|length > 0 %}
                     {% if abc_productos %}
+
                         {% for p in abc_productos %}
+
                             <div class="d-flex justify-content-between mb-2">
+
                                 <span>{{ p.nombre }}</span>
-                                <span class="badge 
+
                                 <span class="badge
-                                    {% if p.clase == 'A' %}bg-success
-                                    {% elif p.clase == 'B' %}bg-warning text-dark
-                                    {% else %}bg-danger{% endif %}">
+                                    {% if p.clase == 'A' %}
+                                        bg-success
+                                    {% elif p.clase == 'B' %}
+                                        bg-warning text-dark
+                                    {% else %}
+                                        bg-danger
+                                    {% endif %}
+                                ">
                                     {{ p.clase }}
                                 </span>
+
                             </div>
+
                         {% endfor %}
+
                     {% else %}
-                        <p class="text-muted">Sin datos ABC</p>
+
+                        <p class="text-muted">
+                            Sin datos ABC
+                        </p>
+
                     {% endif %}
 
                 </div>
+
             </div>
+
         </div>
 
     </div>
@@ -198,29 +301,51 @@
 <!-- ================= FINANZAS ================= -->
 <div class="tab-pane fade" id="finanzas">
 
-    <!-- 🔥 AHORA SÍ CON DATOS REALES -->
-    <div class="card p-4">
+    <div class="card p-4 shadow-sm border-0">
 
-        <h5>💰 Salud Financiera</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3">
 
-        <div class="d-flex justify-content-between">
-            <span>Ingresos</span>
-            <strong class="text-success">${{ ingresos if ingresos else 0 }}</strong>
-            <strong class="text-success">${{ ingresos }}</strong>
+            <h5 class="m-0">
+                💰 Salud Financiera
+            </h5>
+
+            <a href="{{ url_for('finanzas') }}"
+               class="btn btn-primary btn-sm">
+                Ir a Finanzas →
+            </a>
+
         </div>
 
         <div class="d-flex justify-content-between">
+
+            <span>Ingresos</span>
+
+            <strong class="text-success">
+                ${{ ingresos if ingresos else 0 }}
+            </strong>
+
+        </div>
+
+        <div class="d-flex justify-content-between">
+
             <span>Gastos</span>
-            <strong class="text-danger">${{ gastos if gastos else 0 }}</strong>
-            <strong class="text-danger">${{ gastos }}</strong>
+
+            <strong class="text-danger">
+                ${{ gastos if gastos else 0 }}
+            </strong>
+
         </div>
 
         <hr>
 
         <div class="d-flex justify-content-between">
+
             <span>Utilidad</span>
-            <strong>${{ utilidad if utilidad else 0 }}</strong>
-            <strong>${{ utilidad }}</strong>
+
+            <strong>
+                ${{ utilidad if utilidad else 0 }}
+            </strong>
+
         </div>
 
     </div>
@@ -231,21 +356,41 @@
 
 <!-- MODAL -->
 <div class="modal fade" id="modalCaducidad">
+
     <div class="modal-dialog modal-dialog-centered">
+
         <div class="modal-content">
+
             <div class="modal-header bg-info text-white">
                 <h5>Productos por vencer</h5>
             </div>
+
             <div class="modal-body">
-                {% for p in productos_vencidos %}
-                    <div>
-                        {{ p.nombre }} - {{ p.fecha_vencimiento }}
-                    </div>
-                    <div>{{ p.nombre }} - {{ p.fecha_vencimiento }}</div>
-                {% endfor %}
+
+                {% if productos_vencidos %}
+
+                    {% for p in productos_vencidos %}
+
+                        <div>
+                            {{ p.nombre }} - {{ p.fecha_vencimiento }}
+                        </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <p class="text-muted">
+                        No hay productos por vencer
+                    </p>
+
+                {% endif %}
+
             </div>
+
         </div>
+
     </div>
+
 </div>
 
 <!-- CHARTS -->
@@ -259,6 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function cargarGrafica() {
 
         try {
+
             const res = await fetch('/api/ventas_por_hora');
             const data = await res.json();
 
@@ -266,43 +412,64 @@ document.addEventListener('DOMContentLoaded', function() {
             const valores = Object.values(data);
 
             if (!chartHoras) {
-                chartHoras = new Chart(document.getElementById('graficaHoras'), {
-                    type: 'bar',
-                    data: {
-                        labels,
-                        datasets: [{
-                            label: 'Ventas por hora',
-                            data: valores,
-                            backgroundColor: 'rgba(99,102,241,0.7)'
-                        }]
+
+                chartHoras = new Chart(
+                    document.getElementById('graficaHoras'),
+                    {
+                        type: 'bar',
+
+                        data: {
+                            labels: labels,
+
+                            datasets: [{
+                                label: 'Ventas por hora',
+                                data: valores,
+                                backgroundColor: 'rgba(99,102,241,0.7)'
+                            }]
+                        }
                     }
-                });
+                );
+
             } else {
+
                 chartHoras.data.labels = labels;
                 chartHoras.data.datasets[0].data = valores;
                 chartHoras.update();
+
             }
 
         } catch (e) {
+
             console.log("API no lista aún");
+
         }
     }
 
     cargarGrafica();
+
     setInterval(cargarGrafica, 8000);
 
     new Chart(document.getElementById('graficaVentas'), {
+
         type: 'line',
+
         data: {
+
             labels: ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'],
+
             datasets: [{
                 label: 'Ventas',
+
                 data: {{ reporte_semanal | tojson if reporte_semanal else [0,0,0,0,0,0,0] }},
+
                 borderColor: '#6366f1',
                 fill: true
             }]
         }
+
     });
 
 });
 </script>
+
+{% endblock %}
