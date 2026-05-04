@@ -2,143 +2,45 @@ from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
 
-from models import Producto, Venta, Compra
+from models import Producto, Venta
 
 app = Flask(__name__)
 
-# =========================
-# CONFIG
-# =========================
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-app.jinja_env.auto_reload = True
 
 
 # =========================
-# DASHBOARD
+# INDEX
 # =========================
 @app.route('/')
 def index():
 
     try:
-        # =========================
-        # PRODUCTOS
-        # =========================
-        productos = Producto.obtener_todos() or []
-        productos = [dict(p) for p in productos]
-
-        stock_bajo = [
-            p for p in productos
-            if p.get('stock', 0) <= p.get('stock_minimo', 0)
-        ]
-
-        productos_vencidos = [
-            p for p in productos
-            if p.get('fecha_vencimiento')
-        ]
-
-        # =========================
-        # RESUMEN VENTAS
-        # =========================
         resumen_hoy = Venta.obtener_resumen_hoy() or {}
 
-        # =========================
-        # VENTAS RECIENTES
-        # =========================
-        ventas_recientes = []
+        ingresos = float(
+            resumen_hoy.get("total") or 0
+        )
 
-        try:
-            if hasattr(Venta, "obtener_recientes"):
-
-                ventas_recientes = Venta.obtener_recientes(10) or []
-
-                ventas_recientes = [
-                    dict(v) for v in ventas_recientes
-                ]
-
-        except:
-            ventas_recientes = []
-
-        # =========================
-        # ABC PRODUCTOS
-        # =========================
-        abc_productos = []
-
-        try:
-            if hasattr(Producto, "analisis_abc"):
-
-                abc_productos = Producto.analisis_abc() or []
-
-        except:
-            abc_productos = []
-
-        # =========================
-        # METRICAS
-        # =========================
-        metricas = {
-            "ventas_hoy": float(resumen_hoy.get("total", 0) or 0),
-            "utilidad_hoy": float(resumen_hoy.get("utilidad", 0) or 0),
-            "conteo_stock_bajo": len(stock_bajo),
-            "mermas_mes": 0
-        }
-
-        # =========================
-        # ALERTAS
-        # =========================
-        alertas = [
-            {
-                "tipo": "Stock",
-                "mensaje": f"{p.get('nombre', 'Producto')} bajo stock",
-                "color": "warning",
-                "fecha": "Hoy"
-            }
-            for p in stock_bajo
-        ]
-
-        # =========================
-        # FINANZAS
-        # =========================
-        ingresos = metricas["ventas_hoy"]
-        gastos = 0
-
-        try:
-            from database.conexion import obtener_conexion
-
-            db = obtener_conexion()
-
-            gastos = db.execute("""
-                SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-                FROM compras
-            """).fetchone()[0] or 0
-
-            db.close()
-
-        except:
-            gastos = 0
-
-        utilidad = ingresos - gastos
-
-        # =========================
-        # REPORTE SEMANAL
-        # =========================
-        reporte_semanal = [0, 0, 0, 0, 0, 0, 0]
-
-        # =========================
-        # RENDER
-        # =========================
         return render_template(
             "index.html",
 
-            metricas=metricas,
-            alertas=alertas,
-            productos_vencidos=productos_vencidos,
-            ventas_recientes=ventas_recientes,
-            abc_productos=abc_productos,
-            reporte_semanal=reporte_semanal,
+            metricas={
+                "ventas_hoy": ingresos,
+                "utilidad_hoy": ingresos,
+                "conteo_stock_bajo": 0,
+                "mermas_mes": 0
+            },
+
+            alertas=[],
+            productos_vencidos=[],
+            ventas_recientes=[],
+            abc_productos=[],
+            reporte_semanal=[0,0,0,0,0,0,0],
 
             ingresos=ingresos,
-            gastos=gastos,
-            utilidad=utilidad
+            gastos=0,
+            utilidad=ingresos
         )
 
     except Exception as e:
@@ -147,42 +49,18 @@ def index():
 
 
 # =========================
-# API VENTAS POR HORA
+# API
 # =========================
 @app.route('/api/ventas_por_hora')
 def ventas_por_hora():
 
-    try:
-        from database.conexion import obtener_conexion
-
-        conn = obtener_conexion()
-
-        rows = conn.execute("""
-            SELECT 
-                strftime('%H', fecha) as hora,
-                COALESCE(SUM(total),0) as total
-            FROM ventas
-            WHERE DATE(fecha) = DATE('now')
-            GROUP BY hora
-            ORDER BY hora
-        """).fetchall()
-
-        conn.close()
-
-        datos = {
-            f"{i:02d}": 0 for i in range(24)
-        }
-
-        for r in rows:
-            datos[r["hora"]] = r["total"] or 0
-
-        return jsonify(datos)
-
-    except Exception as e:
-
-        return jsonify({
-            "error": str(e)
-        })
+    return jsonify({
+        "08": 0,
+        "09": 0,
+        "10": 0,
+        "11": 0,
+        "12": 0
+    })
 
 
 # =========================
@@ -257,20 +135,9 @@ def finalizar_venta():
 @app.route('/compras')
 def compras():
 
-    try:
-        productos = Producto.obtener_todos() or []
-
-        return render_template(
-            'compras.html',
-            productos=[dict(p) for p in productos]
-        )
-
-    except:
-
-        return render_template(
-            'compras.html',
-            productos=[]
-        )
+    return render_template(
+        "compras.html"
+    )
 
 
 # =========================
@@ -279,103 +146,15 @@ def compras():
 @app.route('/finanzas')
 def finanzas():
 
-    ingresos = 0
-    gastos = 0
-
-    try:
-        from database.conexion import obtener_conexion
-
-        db = obtener_conexion()
-
-        ingresos = db.execute("""
-            SELECT COALESCE(SUM(total),0)
-            FROM ventas
-        """).fetchone()[0] or 0
-
-        gastos = db.execute("""
-            SELECT COALESCE(SUM(cantidad * costo_unitario),0)
-            FROM compras
-        """).fetchone()[0] or 0
-
-        db.close()
-
-    except:
-        ingresos = 0
-        gastos = 0
-
-    resumen = {
-        "ingresos_mes": ingresos,
-        "egresos_mes": gastos,
-        "balance": ingresos - gastos
-    }
-
-    cuentas = []
-
-    if gastos:
-
-        cuentas.append({
-            "proveedor": "Gasto General",
-            "monto": gastos,
-            "vence": datetime.now().strftime("%Y-%m-%d"),
-            "estado": "Normal"
-        })
-
     return render_template(
         "finanzas.html",
-        resumen=resumen,
-        cuentas=cuentas
+        resumen={
+            "ingresos_mes": 0,
+            "egresos_mes": 0,
+            "balance": 0
+        },
+        cuentas=[]
     )
-
-
-# =========================
-# GUARDAR GASTO
-# =========================
-@app.route('/guardar_gasto', methods=['POST'])
-def guardar_gasto():
-
-    try:
-        data = request.get_json()
-
-        concepto = data.get("concepto")
-        monto = float(data.get("monto") or 0)
-
-        fecha = (
-            data.get("fecha")
-            or datetime.now().strftime("%Y-%m-%d")
-        )
-
-        from database.conexion import obtener_conexion
-
-        db = obtener_conexion()
-
-        db.execute("""
-            INSERT INTO compras (
-                proveedor,
-                cantidad,
-                costo_unitario,
-                fecha
-            )
-            VALUES (?, ?, ?, ?)
-        """, (
-            concepto,
-            1,
-            monto,
-            fecha
-        ))
-
-        db.commit()
-        db.close()
-
-        return jsonify({
-            "success": True
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
 
 
 # =========================
@@ -383,7 +162,9 @@ def guardar_gasto():
 # =========================
 if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", 5000))
+    port = int(
+        os.environ.get("PORT", 5000)
+    )
 
     app.run(
         host="0.0.0.0",
