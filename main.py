@@ -1,113 +1,166 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime
+import os
 
-# IMPORTANTE: Traemos nuestros modelos
-from models import Producto, Venta, Merma, Compra, Categoria
+from models import Producto, Venta
 
 app = Flask(__name__)
 
-# --- RUTA: DASHBOARD PRINCIPAL ---
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+
+# =========================
+# INDEX
+# =========================
 @app.route('/')
 def index():
-    # Usamos el modelo para traer la data
-    productos = Producto.obtener_todos()
-    
-    # Lógica de métricas basada en los modelos
-    stock_bajo = [p for p in productos if p['stock'] <= p['stock_minimo']]
-    productos_vencidos = [p for p in productos if p['fecha_vencimiento'] and p['fecha_vencimiento'] != ""]
-
-    # Obtenemos el resumen de ventas real de hoy desde el modelo
-    resumen_hoy = Venta.obtener_resumen_hoy()
-    
-    metricas = {
-        'ventas_hoy': resumen_hoy['total'] if resumen_hoy['total'] else 0.0, 
-        'utilidad_hoy': resumen_hoy['utilidad'] if resumen_hoy['utilidad'] else 0.0, 
-        'conteo_stock_bajo': len(stock_bajo), 
-        'mermas_mes': 50.00  # Pronto lo conectaremos a Merma.obtener_total_mes()
-    }
-    
-    alertas = [{'tipo': 'Stock', 'mensaje': f"'{p['nombre']}' bajo stock.", 'color': 'warning', 'fecha': 'Hoy'} for p in stock_bajo]
-    
-    finanzas = {'ingresos_mes': 15200.00, 'egresos_mes': 8400.00, 'porcentaje_gastos': 55}
-    reporte_diario = {'horas': ['8AM', '12PM', '4PM', '8PM'], 'ventas': [200, 800, 450, 950]}
-    reporte_semanal = {'dias': ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'], 'ventas': [1200, 1900, 1550, 2100, 3400, 4800, 4200]}
-
-    return render_template('index.html', 
-                           metricas=metricas, 
-                           alertas=alertas, 
-                           productos_abc=[], 
-                           productos_vencidos=productos_vencidos, 
-                           finanzas=finanzas, 
-                           reporte_diario=reporte_diario, 
-                           reporte_semanal=reporte_semanal)
-
-# --- RUTAS DE INVENTARIO ---
-@app.route('/inventario')
-def inventario():
-    # Llamada limpia al modelo
-    productos = Producto.obtener_todos()
-    return render_template('inventario.html', productos=productos)
-
-@app.route('/inventario/agregar', methods=['POST'])
-def agregar_producto():
-    datos = (
-        request.form.get('codigo'), 
-        request.form.get('nombre'), 
-        request.form.get('categoria'),
-        float(request.form.get('p_compra') or 0), 
-        float(request.form.get('p_venta') or 0),
-        int(request.form.get('stock') or 0), 
-        int(request.form.get('stock_min') or 5), 
-        request.form.get('vencimiento')
-    )
-    Producto.insertar(datos)
-    return redirect(url_for('inventario'))
-
-# --- PUNTO DE VENTA (POS) ---
-@app.route('/ventas')
-def ventas():
-    return render_template('ventas.html', now=datetime.now())
-
-@app.route('/buscar_producto/<codigo>')
-def buscar_producto(codigo):
-    producto = Producto.buscar_por_codigo(codigo)
-    if producto:
-        return jsonify({
-            'success': True,
-            'producto': {
-                'codigo_barras': producto['codigo_barras'],
-                'nombre': producto['nombre'],
-                'precio_venta': producto['precio_venta'],
-                'stock': producto['stock']
-            }
-        })
-    return jsonify({'success': False})
-
-@app.route('/finalizar_venta', methods=['POST'])
-def finalizar_venta():
-    data = request.get_json()
-    carrito = data.get('carrito', [])
-    
-    if not carrito:
-        return jsonify({'success': False, 'message': 'Carrito vacío'})
 
     try:
-        # Usamos el modelo de Venta para procesar todo
-        total = Venta.registrar_transaccion(carrito)
-        return jsonify({'success': True, 'total': total})
+        resumen_hoy = Venta.obtener_resumen_hoy() or {}
+
+        ingresos = float(resumen_hoy.get("total") or 0)
+
+        productos = Producto.obtener_todos() or []
+
+        return render_template(
+            "index.html",
+
+            metricas={
+                "ventas_hoy": ingresos,
+                "utilidad_hoy": ingresos,
+                "conteo_stock_bajo": 0,
+                "mermas_mes": 0
+            },
+
+            alertas=[],
+            productos_vencidos=[],
+            ventas_recientes=[],
+            abc_productos=[],
+
+            ingresos=ingresos,
+            gastos=0,
+            utilidad=ingresos,
+
+            reporte_semanal=[0,0,0,0,0,0,0]
+        )
+
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return f"ERROR INDEX: {str(e)}"
 
-# --- OTRAS RUTAS ---
-@app.route('/finanzas')
-def finanzas():
-    # Aquí podrías usar un modelo de Finanzas si lo creaste
-    resumen = {'ingresos_mes': 45000.0, 'egresos_mes': 32000.0, 'balance': 13000.0}
-    return render_template('finanzas.html', resumen=resumen)
 
+# =========================
+# API VENTAS POR HORA
+# =========================
+@app.route('/api/ventas_por_hora')
+def ventas_por_hora():
+
+    datos = {
+        "08": 0,
+        "09": 0,
+        "10": 0,
+        "11": 0,
+        "12": 0
+    }
+
+    return jsonify(datos)
+
+
+# =========================
+# INVENTARIO
+# =========================
+@app.route('/inventario')
+def inventario():
+
+    try:
+        productos = Producto.obtener_todos() or []
+
+        return render_template(
+            'inventario.html',
+            productos=[dict(p) for p in productos]
+        )
+
+    except:
+        return render_template(
+            'inventario.html',
+            productos=[]
+        )
+
+
+# =========================
+# VENTAS
+# =========================
+@app.route('/ventas')
+def ventas():
+
+    return render_template(
+        'ventas.html',
+        now=datetime.now()
+    )
+
+
+# =========================
+# FINALIZAR VENTA
+# =========================
+@app.route('/finalizar_venta', methods=['POST'])
+def finalizar_venta():
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        carrito = data.get("carrito", [])
+
+        if not carrito:
+            return jsonify({"success": False})
+
+        total = Venta.registrar_transaccion(carrito)
+
+        return jsonify({
+            "success": True,
+            "total": total
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        })
+
+
+# =========================
+# COMPRAS
+# =========================
 @app.route('/compras')
 def compras():
-    return render_template('compras.html')
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    return render_template("compras.html")
+
+
+# =========================
+# FINANZAS
+# =========================
+@app.route('/finanzas')
+def finanzas():
+
+    return render_template(
+        "finanzas.html",
+        resumen={
+            "ingresos_mes": 0,
+            "egresos_mes": 0,
+            "balance": 0
+        },
+        cuentas=[]
+    )
+
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 5000))
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
