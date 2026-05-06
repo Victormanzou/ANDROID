@@ -203,17 +203,17 @@ def guardar_producto():
 
         datos = (
 
-            request.form['codigo_barras'],
+            request.form['codigo'],
             request.form['nombre'],
             request.form['categoria'],
 
-            float(request.form['precio_compra']),
-            float(request.form['precio_venta']),
+            float(request.form['p_compra']),
+            float(request.form['p_venta']),
 
             int(request.form['stock']),
-            int(request.form['stock_minimo']),
+            int(request.form['stock_min']),
 
-            request.form['fecha_vencimiento']
+            request.form['vencimiento']
 
         )
 
@@ -223,7 +223,11 @@ def guardar_producto():
 
     except Exception as e:
 
-        return f"ERROR GUARDAR PRODUCTO: {str(e)}"
+        return f"""
+        ERROR GUARDAR PRODUCTO:
+        <br><br>
+        {str(e)}
+        """
 
 
 # =========================
