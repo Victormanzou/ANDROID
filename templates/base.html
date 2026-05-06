@@ -25,114 +25,147 @@
 
     <style>
 
+        *{
+            box-sizing:border-box;
+        }
+
         body{
             overflow-x:hidden;
+            background:#f8fafc;
         }
 
         /* =========================
-           NAVBAR
+           NAVBAR GENERAL
         ========================= */
         .navbar{
-            margin:10px;
-            border-radius:20px;
+            margin:12px;
+            border-radius:22px;
+            background:linear-gradient(135deg,#6366f1,#8b5cf6);
+            box-shadow:0 8px 30px rgba(99,102,241,.25);
+            padding:12px 16px;
+        }
+
+        .navbar-brand{
+            font-size:1.1rem;
+            font-weight:700;
+        }
+
+        .navbar .nav-link{
+            color:white !important;
+            padding:10px 14px;
+            border-radius:14px;
+            transition:.2s;
+            font-weight:600;
+        }
+
+        .navbar .nav-link:hover{
+            background:rgba(255,255,255,.15);
+        }
+
+        .navbar .nav-link.active{
+            background:rgba(255,255,255,.18);
         }
 
         /* =========================
-           MOBILE HEADER
+           MOBILE TOP NAV
         ========================= */
-        .mobile-header{
+        .mobile-top-nav{
             display:none;
         }
 
         /* =========================
-           BOTTOM NAV
+           MAIN
         ========================= */
-        .bottom-nav{
-            display:none;
+        main{
+            padding:10px;
         }
 
         /* =========================
            MOBILE
         ========================= */
-        @media (max-width: 768px){
+        @media (max-width:768px){
 
             /* ocultar navbar desktop */
             .navbar{
                 display:none;
             }
 
-            /* mostrar header */
-            .mobile-header{
+            /* TOP NAV MÓVIL */
+            .mobile-top-nav{
+
                 display:flex;
-                justify-content:space-between;
                 align-items:center;
+                justify-content:space-between;
 
                 position:sticky;
                 top:0;
-                z-index:1000;
+                z-index:3000;
 
-                padding:14px 18px;
+                padding:14px 16px;
 
                 background:linear-gradient(135deg,#6366f1,#8b5cf6);
-
-                color:white;
 
                 box-shadow:0 4px 20px rgba(0,0,0,.15);
             }
 
-            .mobile-header .brand{
+            .mobile-brand{
+                color:white;
                 font-weight:700;
                 font-size:1rem;
-            }
-
-            /* contenido */
-            main{
-                padding-bottom:90px !important;
-            }
-
-            /* bottom nav */
-            .bottom-nav{
                 display:flex;
+                align-items:center;
+                gap:8px;
+            }
 
-                position:fixed;
-                bottom:0;
-                left:0;
-                right:0;
+            /* BOTONES ARRIBA */
+            .mobile-menu{
 
-                height:72px;
+                display:flex;
+                gap:8px;
+
+                overflow-x:auto;
+                padding:12px;
 
                 background:white;
 
-                border-top:1px solid rgba(0,0,0,.08);
+                position:sticky;
+                top:64px;
+                z-index:2500;
 
-                z-index:2000;
+                border-bottom:1px solid rgba(0,0,0,.06);
+
+                scrollbar-width:none;
             }
 
-            .bottom-nav a{
-                flex:1;
+            .mobile-menu::-webkit-scrollbar{
+                display:none;
+            }
 
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:center;
+            .mobile-menu a{
+
+                flex-shrink:0;
 
                 text-decoration:none;
-                color:#64748b;
+                color:#475569;
 
-                font-size:.72rem;
-                font-weight:600;
+                background:#f1f5f9;
+
+                padding:10px 14px;
+
+                border-radius:14px;
+
+                font-size:.85rem;
+                font-weight:700;
 
                 transition:.2s;
             }
 
-            .bottom-nav a.active{
-                color:#6366f1;
-            }
+            .mobile-menu a.active{
 
-            .bottom-nav svg{
-                width:22px;
-                height:22px;
-                margin-bottom:4px;
+                background:#6366f1;
+                color:white;
+
+                box-shadow:0 4px 14px rgba(99,102,241,.25);
             }
 
             /* tarjetas */
@@ -140,14 +173,18 @@
                 border-radius:22px !important;
             }
 
+            /* textos */
+            h1,h2,h3{
+                font-size:1.2rem !important;
+            }
+
             /* tablas */
             .table-responsive{
                 font-size:.85rem;
             }
 
-            /* textos */
-            h1,h2,h3{
-                font-size:1.3rem !important;
+            main{
+                padding:12px;
             }
 
         }
@@ -162,10 +199,10 @@
     ========================================== -->
     <nav class="navbar navbar-expand-lg navbar-dark">
 
-        <div class="container-fluid px-3">
+        <div class="container-fluid px-2">
 
             <!-- LOGO -->
-            <a class="navbar-brand fw-bold"
+            <a class="navbar-brand"
                 href="{{ url_for('index') }}">
 
                 <i class="bi bi-shop me-2"></i>
@@ -190,36 +227,41 @@
                 <ul class="navbar-nav me-auto gap-2">
 
                     <li class="nav-item">
-                        <a class="nav-link"
+                        <a class="nav-link {{ 'active' if request.endpoint == 'index' else '' }}"
                             href="{{ url_for('index') }}">
+                            <i class="bi bi-speedometer2 me-1"></i>
                             Dashboard
                         </a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link"
+                        <a class="nav-link {{ 'active' if request.endpoint == 'ventas' else '' }}"
                             href="{{ url_for('ventas') }}">
+                            <i class="bi bi-bag-check me-1"></i>
                             Ventas
                         </a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link"
+                        <a class="nav-link {{ 'active' if request.endpoint == 'inventario' else '' }}"
                             href="{{ url_for('inventario') }}">
+                            <i class="bi bi-box-seam me-1"></i>
                             Inventario
                         </a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link"
+                        <a class="nav-link {{ 'active' if request.endpoint == 'compras' else '' }}"
                             href="{{ url_for('compras') }}">
+                            <i class="bi bi-truck me-1"></i>
                             Compras
                         </a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link"
+                        <a class="nav-link {{ 'active' if request.endpoint == 'finanzas' else '' }}"
                             href="{{ url_for('finanzas') }}">
+                            <i class="bi bi-graph-up me-1"></i>
                             Finanzas
                         </a>
                     </li>
@@ -235,38 +277,64 @@
     <!-- =========================================
          MOBILE HEADER
     ========================================== -->
-    <div class="mobile-header">
+    <div class="mobile-top-nav">
 
-        <div class="brand">
-            <i class="bi bi-shop me-2"></i>
+        <div class="mobile-brand">
+            <i class="bi bi-shop"></i>
             Abarrotes Pro
         </div>
 
-        <div>
-            <i class="bi bi-bell-fill fs-5"></i>
+        <!-- CAMPANA -->
+        <div class="dropdown">
+
+            <button class="btn text-white border-0 p-0"
+                data-bs-toggle="dropdown">
+
+                <i class="bi bi-bell-fill fs-5"></i>
+
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2">
+
+                <li>
+                    <h6 class="dropdown-header">
+                        Notificaciones
+                    </h6>
+                </li>
+
+                <li>
+                    <a class="dropdown-item rounded-3"
+                        href="{{ url_for('inventario') }}">
+
+                        Stock bajo detectado
+
+                    </a>
+                </li>
+
+                <li>
+                    <a class="dropdown-item rounded-3"
+                        href="{{ url_for('ventas') }}">
+
+                        Nuevas ventas hoy
+
+                    </a>
+                </li>
+
+            </ul>
+
         </div>
 
     </div>
 
     <!-- =========================================
-         MAIN CONTENT
+         MOBILE MENU ARRIBA
     ========================================== -->
-    <main class="container-fluid py-3">
-
-        {% block content %}
-        {% endblock %}
-
-    </main>
-
-    <!-- =========================================
-         MOBILE BOTTOM NAV
-    ========================================== -->
-    <nav class="bottom-nav">
+    <div class="mobile-menu">
 
         <a href="{{ url_for('index') }}"
             class="{{ 'active' if request.endpoint == 'index' else '' }}">
 
-            <i class="bi bi-speedometer2"></i>
+            <i class="bi bi-speedometer2 me-1"></i>
             Inicio
 
         </a>
@@ -274,7 +342,7 @@
         <a href="{{ url_for('ventas') }}"
             class="{{ 'active' if request.endpoint == 'ventas' else '' }}">
 
-            <i class="bi bi-bag-check"></i>
+            <i class="bi bi-bag-check me-1"></i>
             Ventas
 
         </a>
@@ -282,7 +350,7 @@
         <a href="{{ url_for('inventario') }}"
             class="{{ 'active' if request.endpoint == 'inventario' else '' }}">
 
-            <i class="bi bi-box-seam"></i>
+            <i class="bi bi-box-seam me-1"></i>
             Stock
 
         </a>
@@ -290,7 +358,7 @@
         <a href="{{ url_for('compras') }}"
             class="{{ 'active' if request.endpoint == 'compras' else '' }}">
 
-            <i class="bi bi-truck"></i>
+            <i class="bi bi-truck me-1"></i>
             Compras
 
         </a>
@@ -298,35 +366,25 @@
         <a href="{{ url_for('finanzas') }}"
             class="{{ 'active' if request.endpoint == 'finanzas' else '' }}">
 
-            <i class="bi bi-graph-up"></i>
+            <i class="bi bi-graph-up me-1"></i>
             Finanzas
 
         </a>
 
-    </nav>
+    </div>
+
+    <!-- =========================================
+         MAIN CONTENT
+    ========================================== -->
+    <main class="container-fluid">
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
 
     <!-- Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- ACTIVE LINK -->
-    <script>
-
-        const currentPath = window.location.pathname;
-
-        document.querySelectorAll('.navbar .nav-link').forEach(link => {
-
-            if(link.getAttribute('href') === currentPath){
-
-                link.classList.add('active');
-
-                link.style.background = 'rgba(255,255,255,0.15)';
-                link.style.borderRadius = '12px';
-
-            }
-
-        });
-
-    </script>
 
     {% block scripts %}
     {% endblock %}
