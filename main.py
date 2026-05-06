@@ -1,7 +1,7 @@
-from flask import Flask, render_template
+from flask import Flask
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return render_template("ventas.html")
+    return "<h1>FUNCIONA BIEN</h1>"
