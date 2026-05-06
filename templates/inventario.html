@@ -249,7 +249,10 @@
 
             </div>
 
-            <form action="/inventario/agregar" method="POST">
+            <!-- =========================
+                 FIX PRINCIPAL AQUÍ
+            ========================== -->
+            <form action="/guardar_producto" method="POST">
 
                 <div class="modal-body p-4">
 
@@ -260,10 +263,11 @@
 
                     <div class="input-group mb-2">
 
+                        <!-- FIX NAME -->
                         <input type="text"
                                class="form-control"
                                id="codigoProducto"
-                               name="codigo"
+                               name="codigo_barras"
                                placeholder="Escanea o escribe..."
                                required>
 
@@ -330,10 +334,11 @@
                                 Precio Compra
                             </label>
 
+                            <!-- FIX NAME -->
                             <input type="number"
                                    step="0.01"
                                    class="form-control"
-                                   name="p_compra"
+                                   name="precio_compra"
                                    required>
 
                         </div>
@@ -344,10 +349,11 @@
                                 Precio Venta
                             </label>
 
+                            <!-- FIX NAME -->
                             <input type="number"
                                    step="0.01"
                                    class="form-control"
-                                   name="p_venta"
+                                   name="precio_venta"
                                    required>
 
                         </div>
@@ -371,9 +377,10 @@
                                 Stock mínimo
                             </label>
 
+                            <!-- FIX NAME -->
                             <input type="number"
                                    class="form-control"
-                                   name="stock_min"
+                                   name="stock_minimo"
                                    value="5">
 
                         </div>
@@ -384,9 +391,10 @@
                                 Vencimiento
                             </label>
 
+                            <!-- FIX NAME -->
                             <input type="date"
                                    class="form-control"
-                                   name="vencimiento">
+                                   name="fecha_vencimiento">
 
                         </div>
 
