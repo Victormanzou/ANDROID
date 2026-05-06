@@ -1,224 +1,475 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <!-- CRÍTICO para móvil -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#6366f1">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Abarrotes Pro</title>
+{% block content %}
 
-    <!-- Bootstrap 5 -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Estilos personalizados -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-
-<body>
-
-    <!-- ══════════════════════════════════════════════════════
-       NAVBAR — Solo visible en escritorio/tablet
-  ══════════════════════════════════════════════════════ -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid px-3">
-
-            <!-- Logo -->
-            <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('index') }}">
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                    <rect width="28" height="28" rx="8" fill="white" fill-opacity="0.2" />
-                    <path d="M7 10h14M7 14h10M7 18h12" stroke="white" stroke-width="2" stroke-linecap="round" />
-                    <circle cx="21" cy="18" r="3" fill="#f43f5e" />
-                </svg>
-                Abarrotes Pro
-            </a>
-
-            <!-- Hamburger (tablet) -->
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"
-                aria-controls="navbarMain" aria-expanded="false" aria-label="Menú">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <!-- Links -->
-            <div class="collapse navbar-collapse" id="navbarMain">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
-                    <li class="nav-item">
-                        <a class="nav-link rounded-3 px-3 py-2 fw-600" href="{{ url_for('index') }}">
-                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link rounded-3 px-3 py-2 fw-600" href="{{ url_for('ventas') }}">
-                            <i class="bi bi-bag-check me-1"></i> Ventas
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link rounded-3 px-3 py-2 fw-600" href="{{ url_for('inventario') }}">
-                            <i class="bi bi-boxes me-1"></i> Inventario
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link rounded-3 px-3 py-2 fw-600" href="{{ url_for('compras') }}">
-                            <i class="bi bi-truck me-1"></i> Compras
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link rounded-3 px-3 py-2 fw-600" href="{{ url_for('finanzas') }}">
-                            <i class="bi bi-bar-chart-line me-1"></i> Finanzas
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Notificaciones -->
-                <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link position-relative rounded-3 px-3" href="#" role="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-bell-fill fs-5 text-white"></i>
-                            <span class="badge-pulse"></span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width:280px;">
-                            <li>
-                                <h6 class="dropdown-header fw-700 text-primary">
-                                    <i class="bi bi-bell me-1"></i> Avisos Recientes
-                                </h6>
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-3 py-2" href="{{ url_for('inventario') }}">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-warning text-dark"><i
-                                                class="bi bi-exclamation-triangle"></i></span>
-                                        <div>
-                                            <div class="fw-600 small">Stock Crítico</div>
-                                            <div class="text-muted" style="font-size:0.78rem;">Pan de Caja (2 unidades)
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <hr class="dropdown-divider my-1">
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-3 py-2" href="{{ url_for('inventario') }}">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-danger"><i class="bi bi-calendar-x"></i></span>
-                                        <div>
-                                            <div class="fw-600 small">Vencimientos</div>
-                                            <div class="text-muted" style="font-size:0.78rem;">3 productos por vencer
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <hr class="dropdown-divider my-1">
-                            </li>
-                            <li>
-                                <a class="dropdown-item rounded-3 text-center text-primary small fw-600"
-                                    href="{{ url_for('inventario') }}">
-                                    Ver todo el historial
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- ══════════════════════════════════════════════════════
-       HEADER MÓVIL — Solo visible en móvil (< 768px)
-  ══════════════════════════════════════════════════════ -->
-    <div class="mobile-header d-none">
-        <span class="brand">
-            <svg width="22" height="22" viewBox="0 0 28 28" fill="none" class="me-2" style="vertical-align:middle">
-                <rect width="28" height="28" rx="8" fill="white" fill-opacity="0.25" />
-                <path d="M7 10h14M7 14h10M7 18h12" stroke="white" stroke-width="2" stroke-linecap="round" />
-                <circle cx="21" cy="18" r="3" fill="#f43f5e" />
-            </svg>
-            Abarrotes Pro
-        </span>
-        <!-- Notificaciones en móvil -->
-        <a href="{{ url_for('inventario') }}" class="position-relative text-white text-decoration-none">
-            <i class="bi bi-bell-fill fs-5"></i>
-            <span class="badge-pulse"></span>
-        </a>
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold m-0">📊 Panel de Inteligencia</h2>
+        <p class="text-muted m-0">Supervisión detallada de la operación.</p>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
-       CONTENIDO PRINCIPAL
-  ══════════════════════════════════════════════════════ -->
-    <main class="container-fluid py-3">
-        {% block content %}{% endblock %}
-    </main>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <button type="button"
+            class="btn btn-info border-0 shadow-sm py-2 px-3 text-white position-relative"
+            data-bs-toggle="modal"
+            data-bs-target="#modalCaducidad">
 
-    <!-- ══════════════════════════════════════════════════════
-       BOTTOM NAVIGATION BAR — Solo móvil
-  ══════════════════════════════════════════════════════ -->
-    <nav class="bottom-nav" aria-label="Navegación móvil">
-        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12L12 3l9 9" />
-                <path d="M9 21V12h6v9" />
-            </svg>
-            Dashboard
-        </a>
-        <a href="{{ url_for('ventas') }}" class="{{ 'active' if request.endpoint == 'ventas' else '' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <path d="M16 10a4 4 0 01-8 0" />
-            </svg>
-            Ventas
-        </a>
-        <a href="{{ url_for('inventario') }}" class="{{ 'active' if request.endpoint == 'inventario' else '' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="7" width="20" height="14" rx="2" />
-                <path d="M16 3H8l-2 4h12l-2-4z" />
-            </svg>
-            Inventario
-        </a>
-        <a href="{{ url_for('compras') }}" class="{{ 'active' if request.endpoint == 'compras' else '' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="3" width="15" height="13" rx="1" />
-                <path d="M16 8h4l3 5v3h-7V8z" />
-                <circle cx="5.5" cy="18.5" r="2.5" />
-                <circle cx="18.5" cy="18.5" r="2.5" />
-            </svg>
-            Compras
-        </a>
-        <a href="{{ url_for('finanzas') }}" class="{{ 'active' if request.endpoint == 'finanzas' else '' }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10" />
-                <line x1="12" y1="20" x2="12" y2="4" />
-                <line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-            Finanzas
-        </a>
-    </nav>
+            <i class="bi bi-calendar-event-fill me-2"></i>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+            <strong>
+                {{ productos_vencidos|length if productos_vencidos else 0 }}
+            </strong>
 
-    <script>
-        // Marcar nav-link activo en escritorio
-        (function () {
-            const path = window.location.pathname;
-            document.querySelectorAll('.navbar .nav-link').forEach(link => {
-                if (link.getAttribute('href') === path) {
-                    link.classList.add('active');
-                    link.style.background = 'rgba(255,255,255,0.2)';
-                }
-            });
-        })();
-    </script>
+            productos vencen pronto
 
-    {% block scripts %}{% endblock %}
-</body>
+            <span class="badge-pulse"></span>
 
-</html>
+        </button>
+    </div>
+</div>
+
+<!-- NAV -->
+<ul class="nav nav-pills nav-fill mb-4 bg-white shadow-sm p-1 rounded-pill">
+
+    <li class="nav-item">
+        <button class="nav-link active rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#hoy">
+            Operación Hoy
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button class="nav-link rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#semana">
+            Análisis Semanal
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button class="nav-link rounded-pill fw-bold"
+            data-bs-toggle="pill"
+            data-bs-target="#finanzas">
+            Salud Financiera
+        </button>
+    </li>
+
+</ul>
+
+<div class="tab-content">
+
+<!-- ================= HOY ================= -->
+<div class="tab-pane fade show active" id="hoy">
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <h6 class="text-muted">Ventas</h6>
+
+                <h3>
+                    ${{ "{:,.2f}".format(metricas.ventas_hoy if metricas.ventas_hoy else 0) }}
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <h6 class="text-muted">Utilidad</h6>
+
+                <h3 class="text-success">
+                    ${{ "{:,.2f}".format(metricas.utilidad_hoy if metricas.utilidad_hoy else 0) }}
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <h6 class="text-muted">Stock Bajo</h6>
+
+                <h3>
+                    {{ metricas.conteo_stock_bajo if metricas.conteo_stock_bajo else 0 }}
+                </h3>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm p-3">
+                <h6 class="text-muted">Mermas</h6>
+
+                <h3 class="text-danger">
+                    ${{ "{:,.2f}".format(metricas.mermas_mes if metricas.mermas_mes else 0) }}
+                </h3>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row g-4">
+
+        <!-- GRAFICA -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+
+                <div class="card-header bg-white fw-bold">
+                    Flujo de Ventas por Hora
+                </div>
+
+                <div class="card-body">
+                    <canvas id="graficaHoras" height="280"></canvas>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ALERTAS -->
+        <div class="col-lg-4">
+
+            <div class="card shadow-sm border-0 bg-light">
+
+                <div class="card-body">
+
+                    <h5>Alertas</h5>
+
+                    {% if alertas %}
+
+                        {% for alerta in alertas %}
+
+                            <div class="mb-2">
+
+                                <span class="badge bg-{{ alerta.color }}">
+                                    {{ alerta.tipo }}
+                                </span>
+
+                                <small>{{ alerta.mensaje }}</small>
+
+                            </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p class="text-muted">
+                            Sin alertas
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- VENTAS -->
+    <div class="card shadow-sm border-0 mt-4">
+
+        <div class="card-header bg-white fw-bold">
+            🧾 Ventas Recientes
+        </div>
+
+        <div class="card-body p-0">
+
+            <table class="table table-hover text-center mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Total</th>
+                        <th>Utilidad</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% if ventas_recientes %}
+
+                        {% for v in ventas_recientes %}
+
+                        <tr>
+
+                            <td>{{ v.fecha }}</td>
+
+                            <td>
+                                ${{ "{:,.2f}".format(v.total if v.total else 0) }}
+                            </td>
+
+                            <td class="text-success">
+                                ${{ "{:,.2f}".format(v.utilidad if v.utilidad else 0) }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="3" class="text-muted py-3">
+                                Sin ventas
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= SEMANA ================= -->
+<div class="tab-pane fade" id="semana">
+
+    <div class="row">
+
+        <!-- GRAFICA -->
+        <div class="col-md-8">
+
+            <div class="card">
+
+                <div class="card-body">
+                    <canvas id="graficaVentas" height="300"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ABC -->
+        <div class="col-md-4">
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-header bg-white fw-bold">
+                    📦 Clasificación ABC
+                </div>
+
+                <div class="card-body">
+
+                    {% if abc_productos %}
+
+                        {% for p in abc_productos %}
+
+                            <div class="d-flex justify-content-between mb-2">
+
+                                <span>{{ p.nombre }}</span>
+
+                                <span class="badge
+                                    {% if p.clase == 'A' %}
+                                        bg-success
+                                    {% elif p.clase == 'B' %}
+                                        bg-warning text-dark
+                                    {% else %}
+                                        bg-danger
+                                    {% endif %}
+                                ">
+                                    {{ p.clase }}
+                                </span>
+
+                            </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p class="text-muted">
+                            Sin datos ABC
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= FINANZAS ================= -->
+<div class="tab-pane fade" id="finanzas">
+
+    <div class="card p-4 shadow-sm border-0">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <h5 class="m-0">
+                💰 Salud Financiera
+            </h5>
+
+            <a href="{{ url_for('finanzas') }}"
+               class="btn btn-primary btn-sm">
+                Ir a Finanzas →
+            </a>
+
+        </div>
+
+        <div class="d-flex justify-content-between">
+
+            <span>Ingresos</span>
+
+            <strong class="text-success">
+                ${{ ingresos if ingresos else 0 }}
+            </strong>
+
+        </div>
+
+        <div class="d-flex justify-content-between">
+
+            <span>Gastos</span>
+
+            <strong class="text-danger">
+                ${{ gastos if gastos else 0 }}
+            </strong>
+
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-between">
+
+            <span>Utilidad</span>
+
+            <strong>
+                ${{ utilidad if utilidad else 0 }}
+            </strong>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="modalCaducidad">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-info text-white">
+                <h5>Productos por vencer</h5>
+            </div>
+
+            <div class="modal-body">
+
+                {% if productos_vencidos %}
+
+                    {% for p in productos_vencidos %}
+
+                        <div>
+                            {{ p.nombre }} - {{ p.fecha_vencimiento }}
+                        </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <p class="text-muted">
+                        No hay productos por vencer
+                    </p>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- CHARTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    let chartHoras;
+
+    async function cargarGrafica() {
+
+        try {
+
+            const res = await fetch('/api/ventas_por_hora');
+            const data = await res.json();
+
+            const labels = Object.keys(data).map(h => h + ':00');
+            const valores = Object.values(data);
+
+            if (!chartHoras) {
+
+                chartHoras = new Chart(
+                    document.getElementById('graficaHoras'),
+                    {
+                        type: 'bar',
+
+                        data: {
+                            labels: labels,
+
+                            datasets: [{
+                                label: 'Ventas por hora',
+                                data: valores,
+                                backgroundColor: 'rgba(99,102,241,0.7)'
+                            }]
+                        }
+                    }
+                );
+
+            } else {
+
+                chartHoras.data.labels = labels;
+                chartHoras.data.datasets[0].data = valores;
+                chartHoras.update();
+
+            }
+
+        } catch (e) {
+
+            console.log("API no lista aún");
+
+        }
+    }
+
+    cargarGrafica();
+
+    setInterval(cargarGrafica, 8000);
+
+    new Chart(document.getElementById('graficaVentas'), {
+
+        type: 'line',
+
+        data: {
+
+            labels: ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'],
+
+            datasets: [{
+                label: 'Ventas',
+
+                data: {{ reporte_semanal | tojson if reporte_semanal else [0,0,0,0,0,0,0] }},
+
+                borderColor: '#6366f1',
+                fill: true
+            }]
+        }
+
+    });
+
+});
+</script>
+
+{% endblock %}
